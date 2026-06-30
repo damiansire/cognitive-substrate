@@ -44,8 +44,13 @@ Implemented in `packages/engine`, one tick per workspace:
    (max 15 steps, exponential backoff on 429/503). Tool results are returned to the
    model as proper `functionResponse` parts.
 4. **Verify** (`verification.verifyTask`) — deterministic checks (execution succeeded,
-   log non-empty, any referenced files exist) **plus** a skeptical LLM verifier when a
-   key is present. A task is verified only if both agree.
+   log non-empty, any referenced files exist), **plus a behavioral check**
+   (`verification.behavioralCheck`) that actually *runs* a command — an explicit
+   `@verify: <command>` annotation on the task, or `npm test` when the workspace
+   declares one — and requires exit code 0, **plus** a skeptical LLM verifier when a
+   key is present. A task is verified only if all of these agree. Without a verify
+   command resolved (no annotation, no `package.json` test script), this check is
+   skipped entirely — file/log checks behave exactly as before.
 5. **Record evidence** (`evidence.recordRun`) — writes `runs/<ts>-<slug>/run.json` and
    `summary.md`. **Nothing is marked `[x]` without an evidence record.**
 6. **Learn** (`memory.distillLearning` + `appendLearning`) — one distilled lesson per
@@ -100,6 +105,7 @@ keeps the whole loop runnable offline and is what the test suite exercises.
 | Tool-calling agent (fs + terminal) | ✅ implemented | `gemini-agent-loop` |
 | Workspace filesystem sandbox | ✅ enforced | `sandbox-fs` |
 | Verification + evidence on disk | ✅ implemented | `engine/verification.ts`, `evidence.ts` |
+| Behavioral verification (runs `@verify:`/`npm test`, requires exit 0) | ✅ implemented | `engine/verification.ts: behavioralCheck` |
 | Archival memory (knowledge.md) | ✅ implemented | `engine/memory.ts` |
 | Concurrent multi-workspace daemon | ✅ implemented | `engine/orchestrator.ts`, `daemon.ts` |
 | Dynamic skills (SKILL.md discovery) | ✅ implemented | `skills-parser` |

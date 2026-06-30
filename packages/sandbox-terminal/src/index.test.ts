@@ -40,4 +40,13 @@ describe('terminalTools.runCommand', () => {
         });
         expect(out).toContain('Command failed');
     });
+
+    it('honors a custom timeoutMs for longer-running commands', async () => {
+        const out = await terminalTools.runCommand(
+            workspace,
+            { command: `node -e "setTimeout(() => console.log('done'), 50)"` },
+            1000
+        );
+        expect(out.trim()).toBe('done');
+    });
 });

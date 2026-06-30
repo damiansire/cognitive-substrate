@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { generateJson, hasApiKey } from '@cognitive-substrate/gemini-agent-loop';
+import { terminalTools } from '@cognitive-substrate/sandbox-terminal';
 import type { Verdict, VerificationCheck } from './types';
 
 /** Extracts file-like tokens (e.g. `app.js`, `src/index.ts`) referenced in a task. */
@@ -8,6 +9,68 @@ export function referencedFiles(task: string): string[] {
     const matches = task.match(/[\w./-]+\.[a-zA-Z0-9]{1,6}/g) ?? [];
     // Keep only plausible relative paths, dedupe.
     return Array.from(new Set(matches.filter((m) => !m.startsWith('.') || m.includes('/'))));
+}
+
+/** Wall-time budget for a behavioral check — longer than a normal tool-call timeout
+ * because `npm test` (and whatever it installs/runs) is legitimately slower. */
+const VERIFY_COMMAND_TIMEOUT_MS = 30_000;
+
+/** Extracts an explicit `@verify: <command>` annotation from a task line, if present. */
+export function extractVerifyCommand(task: string): string | null {
+    const match = task.match(/@verify:\s*(.+)$/m);
+    const captured = match?.[1]?.trim();
+    return captured || null;
+}
+
+/** Removes a trailing `@verify: ...` annotation so the rest of the task (e.g. file
+ * references) isn't polluted by command syntax like `node -e "process.exit(0)"`. */
+function stripVerifyAnnotation(task: string): string {
+    return task.replace(/@verify:\s*.+$/m, '').trim();
+}
+
+/**
+ * Resolves which command (if any) should be run to prove the task's behavior is
+ * real, not just claimed. Priority: explicit `@verify:` annotation on the task, then
+ * a `package.json` `"test"` script in the workspace root. Neither present → `null`,
+ * meaning no behavioral check is added (today's behavior, unchanged).
+ */
+export function resolveVerifyCommand(workspacePath: string, task: string): string | null {
+    const inline = extractVerifyCommand(task);
+    if (inline) return inline;
+
+    const pkgPath = path.resolve(workspacePath, 'package.json');
+    if (!fs.existsSync(pkgPath)) return null;
+    try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        const testScript = pkg?.scripts?.test;
+        return typeof testScript === 'string' && testScript.trim() ? 'npm test' : null;
+    } catch {
+        return null;
+    }
+}
+
+/** Prefixes `sandbox-terminal.runCommand` deterministically uses to report a failure. */
+const COMMAND_FAILURE_PREFIXES = ['Command failed.', 'Error Crítico:', 'Error de Seguridad:'];
+
+/**
+ * Runs the resolved verify command (if any) and turns it into a `VerificationCheck`.
+ * This is the one check that actually executes what the agent built, instead of only
+ * inspecting files/logs — it is what catches behavioral bugs (e.g. a server emitting
+ * an event the client never listens for) that file-existence checks miss entirely.
+ */
+export async function behavioralCheck(workspacePath: string, task: string): Promise<VerificationCheck | null> {
+    const command = resolveVerifyCommand(workspacePath, task);
+    if (!command) return null;
+
+    const output = await terminalTools.runCommand(workspacePath, { command }, VERIFY_COMMAND_TIMEOUT_MS);
+    const passed = !COMMAND_FAILURE_PREFIXES.some((p) => output.startsWith(p));
+    return {
+        name: 'verificacion-real',
+        passed,
+        detail: passed
+            ? `"${command}" se ejecutó correctamente.`
+            : `"${command}" falló: ${output.slice(0, 500)}`
+    };
 }
 
 /**
@@ -34,7 +97,7 @@ export function deterministicChecks(
         detail: log.trim().length > 0 ? `Log de ${log.trim().length} chars.` : 'El log está vacío.'
     });
 
-    for (const rel of referencedFiles(task)) {
+    for (const rel of referencedFiles(stripVerifyAnnotation(task))) {
         const exists = fileExistsInside(workspacePath, rel);
         checks.push({
             name: `archivo-existe:${rel}`,
@@ -72,6 +135,10 @@ export async function verifyTask(
     executionSuccess: boolean
 ): Promise<Verdict> {
     const checks = deterministicChecks(workspacePath, task, log, executionSuccess);
+
+    const behavioral = await behavioralCheck(workspacePath, task);
+    if (behavioral) checks.push(behavioral);
+
     const deterministicOk = checks.every((c) => c.passed);
 
     if (!hasApiKey()) {

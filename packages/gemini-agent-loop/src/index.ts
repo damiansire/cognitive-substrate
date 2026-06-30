@@ -141,7 +141,22 @@ Si necesitas contexto histórico de este proyecto, usa la herramienta readFile p
 Sigue estos pasos estrictamente:
 1. Analiza la tarea.
 2. Utiliza las herramientas necesarias para completarla.
-3. Si logras el objetivo, devuelve tu último mensaje explicando qué hiciste.
+3. Si la tarea involucra código ejecutable (un server, un script, una integración),
+   dejá una comprobación automatizable y acotada que pruebe que el comportamiento
+   funciona de verdad (ej: un script de test que arranque lo necesario, lo ejerza, y
+   termine con código de salida 0 o distinto de 0) — no alcanza con que el archivo
+   exista, el sistema va a volver a correr esa comprobación de forma independiente.
+4. Si la tarea involucra una interfaz que se renderiza en un navegador (HTML/CSS/JS de
+   cliente), un test de servidor (sockets, API, etc.) NO ES SUFICIENTE — ese test puede
+   pasar mientras la pantalla está rota (ej: un contenedor del DOM que no existe, o un
+   script de cliente que nunca se conecta). Para este caso tenés que escribir una
+   comprobación que abra un navegador real y la ejerza como lo haría una persona
+   (cargar la página, completar formularios, hacer click, y fallar con código de salida
+   distinto de 0 si lo que se ve en pantalla no es lo esperado). Usá Playwright para
+   esto: si no está instalado en el workspace, instalalo vos mismo
+   (npm install --save-dev playwright, y npx playwright install chromium) antes de
+   escribir el test.
+5. Si logras el objetivo, devuelve tu último mensaje explicando qué hiciste.
 `;
 
     console.log(`>>> [LLM] Delegando tarea en workspace ${workspacePath}: ${task}`);

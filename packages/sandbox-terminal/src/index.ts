@@ -28,9 +28,12 @@ export const terminalTools = {
      *
      * @param workspacePath - The absolute path to the designated workspace.
      * @param args - The arguments containing the command to execute.
+     * @param timeoutMs - Wall-time limit override (defaults to `COMMAND_TIMEOUT_MS`).
+     *   Callers that know a command legitimately takes longer than an agent tool-call
+     *   (e.g. `npm test`) can opt into a longer bound without changing the default.
      * @returns A promise resolving to the command output, or an error message.
      */
-    runCommand(workspacePath: string, args: { command: string }): Promise<string> {
+    runCommand(workspacePath: string, args: { command: string }, timeoutMs: number = COMMAND_TIMEOUT_MS): Promise<string> {
         const command = args?.command ?? '';
         console.log(`>>> [Sandbox] Ejecutando en ${workspacePath}: ${command}`);
 
@@ -49,7 +52,7 @@ export const terminalTools = {
                 {
                     encoding: 'utf8',
                     cwd: workspacePath,
-                    timeout: COMMAND_TIMEOUT_MS,
+                    timeout: timeoutMs,
                     killSignal: 'SIGKILL',
                     windowsHide: true,
                     maxBuffer: MAX_OUTPUT_BYTES
@@ -59,7 +62,7 @@ export const terminalTools = {
                         if ((error as any).killed && (error as any).signal === 'SIGKILL') {
                             resolve(
                                 `Error Crítico: El comando excedió el tiempo máximo de ${
-                                    COMMAND_TIMEOUT_MS / 1000
+                                    timeoutMs / 1000
                                 } segundos y fue abortado por el OS para evitar cuelgues.`
                             );
                             return;
