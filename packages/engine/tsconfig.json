@@ -19,6 +19,9 @@
       "path": "../sandbox-fs"
     },
     {
+      "path": "../sandbox-terminal"
+    },
+    {
       "path": "../governance"
     }
   ]

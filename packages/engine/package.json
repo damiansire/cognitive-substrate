@@ -8,6 +8,7 @@
   "dependencies": {
     "@cognitive-substrate/gemini-agent-loop": "*",
     "@cognitive-substrate/sandbox-fs": "*",
+    "@cognitive-substrate/sandbox-terminal": "*",
     "@cognitive-substrate/governance": "*"
   }
 }
