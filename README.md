@@ -142,13 +142,13 @@ This project builds on concepts from several state-of-the-art systems while stay
 fully local and filesystem-first:
 
 - **[Concept by Nir Feinstein](https://www.nirfeinste.in/)** — adopted the foundational
-  concepts and the originating charter draft (now [`docs/vision/`](docs/vision/README.md)).
-- **MemGPT** — the *Core* vs *Archival* memory hierarchy, mapped here to transparent
+  concepts and the originating charter draft.
+- **[MemGPT](https://memgpt.ai/)** — the *Core* vs *Archival* memory hierarchy, mapped here to transparent
   local files instead of a vector DB.
-- **Claude Code & Claude Agent SDK** — isolated subagent contexts and MCP-style tools;
+- **[Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) & [Claude Agent SDK](https://docs.anthropic.com/)** — isolated subagent contexts and MCP-style tools;
   here state persists strictly through local markdown rather than ephemeral threads.
-- **OpenAI Agents SDK & Deep Research** — separating exploratory research from execution.
-- **Devin (Cognition)** — the closed-loop execute→review pattern, with the entire trace
+- **[OpenAI Agents SDK](https://platform.openai.com/docs/assistants/overview) & [Deep Research](https://openai.com/index/introducing-deep-research/)** — separating exploratory research from execution.
+- **[Devin (Cognition)](https://www.cognition.ai/)** — the closed-loop execute→review pattern, with the entire trace
   written as plain markdown on disk for transparency and rollback.
 
 ## Contributing
