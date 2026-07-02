@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { resolveInsideWorkspace } from '@cognitive-substrate/sandbox-fs';
 import type { RunRecord, Verdict } from './types';
 
 /** Turns an arbitrary task string into a short, filesystem-safe slug. */
@@ -81,10 +82,19 @@ export function listRuns(workspacePath: string): string[] {
         .map((f) => path.join(RUNS_DIR, f));
 }
 
-/** Reads a run's `run.json` back into a `RunRecord`. Null if missing or malformed. */
+/**
+ * Reads a run's `run.json` back into a `RunRecord`. Null if missing or malformed.
+ *
+ * `evidencePath` is untrusted at the edges (the web-server's `?path=` query param flows
+ * straight here), so it is confined to the workspace via `resolveInsideWorkspace` — the
+ * same containment invariant `sandbox-fs` enforces for the agent's own file tools. A path
+ * that escapes (`../../etc/...`, an absolute path, a symlink out) throws `SandboxEscapeError`,
+ * which is caught and surfaces as `null` — never an arbitrary disk read.
+ */
 export function readRun(workspacePath: string, evidencePath: string): RunRecord | null {
     try {
-        const raw = fs.readFileSync(path.resolve(workspacePath, evidencePath, 'run.json'), 'utf8');
+        const runJson = resolveInsideWorkspace(workspacePath, path.join(evidencePath, 'run.json'));
+        const raw = fs.readFileSync(runJson, 'utf8');
         return JSON.parse(raw) as RunRecord;
     } catch {
         return null;

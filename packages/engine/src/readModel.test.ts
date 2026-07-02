@@ -220,6 +220,21 @@ describe('getSessionTrace / getLatestRunPath', () => {
         expect(trace.record?.task).toBe('- [ ] Tarea A');
         expect(trace.summaryMd).toContain('NO VERIFICADO');
     });
+
+    it('confines an untrusted evidencePath to the workspace (defense in depth)', () => {
+        // A sibling dir outside the workspace with a summary.md — the traversal target.
+        const evilDir = fs.mkdtempSync(path.join(os.tmpdir(), 'csos-evil-'));
+        fs.writeFileSync(path.join(evilDir, 'summary.md'), 'TOP SECRET');
+        fs.writeFileSync(path.join(evilDir, 'run.json'), JSON.stringify({ task: 'LEAKED' }));
+        try {
+            const rel = path.relative(workspace, evilDir); // e.g. ..\csos-evil-xxxx
+            const trace = getSessionTrace(workspace, rel);
+            expect(trace.record).toBeNull();
+            expect(trace.summaryMd).toBeNull();
+        } finally {
+            fs.rmSync(evilDir, { recursive: true, force: true });
+        }
+    });
 });
 
 describe('getWorkspaceKpis', () => {

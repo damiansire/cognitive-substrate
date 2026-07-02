@@ -126,6 +126,30 @@ describe('GET /api/workspaces/:project/sessions', () => {
         expect(payload.record?.task).toBe('- [ ] Tarea A');
         expect(record.evidencePath).toBeTruthy();
     });
+
+    it('rejects a traversal ?path= with 400 and never leaks a run outside the workspace', async () => {
+        const project = path.basename(root);
+        // Plant a genuine exfil target OUTSIDE the workspace: a sibling dir with a
+        // summary.md, which pre-fix getSessionTrace would happily read via ?path=../evil.
+        const evilDir = path.join(root, '..', `csos-evil-${path.basename(root)}`);
+        fs.mkdirSync(evilDir, { recursive: true });
+        fs.writeFileSync(path.join(evilDir, 'summary.md'), 'TOP SECRET');
+        try {
+            for (const evil of [
+                '../../../../etc/passwd',
+                `../${path.basename(evilDir)}`,
+                '..\\..\\windows\\win.ini',
+                '/etc/hosts',
+                'goal.md' // in-workspace but not under runs/ — still rejected
+            ]) {
+                const res = await call(root, 'GET', `/api/workspaces/${project}/sessions`, { path: evil });
+                expect(res.status).toBe(400);
+                expect(JSON.stringify(res.payload)).not.toContain('TOP SECRET');
+            }
+        } finally {
+            fs.rmSync(evilDir, { recursive: true, force: true });
+        }
+    });
 });
 
 describe('POST /api/workspaces/:project/ask', () => {

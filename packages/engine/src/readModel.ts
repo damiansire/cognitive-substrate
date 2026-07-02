@@ -9,6 +9,7 @@ import { listClaims, type StoredClaimEntry } from './claims';
 import type { RunRecord } from './types';
 import { ApprovalStore, loadPolicy, type PendingApproval } from '@cognitive-substrate/governance';
 import { discoverSkills, type SkillMetadata } from '@cognitive-substrate/skills-parser';
+import { resolveInsideWorkspace } from '@cognitive-substrate/sandbox-fs';
 
 /**
  * Read-only projections over a workspace's on-disk state (tasks.md, approvals.json,
@@ -146,11 +147,19 @@ export interface SessionTrace {
     summaryMd: string | null;
 }
 
-/** Drill-down into one run: the raw record plus its human-readable summary.md. */
+/** Drill-down into one run: the raw record plus its human-readable summary.md.
+ * `evidencePath` is untrusted (web-server `?path=`); `readRun` and the `summary.md` read
+ * are both confined to the workspace via `resolveInsideWorkspace`, so a traversal attempt
+ * yields an empty trace instead of leaking a file from elsewhere on disk. */
 export function getSessionTrace(workspacePath: string, evidencePath: string): SessionTrace {
     const record = readRun(workspacePath, evidencePath);
-    const summaryPath = path.resolve(workspacePath, evidencePath, 'summary.md');
-    const summaryMd = fs.existsSync(summaryPath) ? fs.readFileSync(summaryPath, 'utf8') : null;
+    let summaryMd: string | null;
+    try {
+        const summaryPath = resolveInsideWorkspace(workspacePath, path.join(evidencePath, 'summary.md'));
+        summaryMd = fs.existsSync(summaryPath) ? fs.readFileSync(summaryPath, 'utf8') : null;
+    } catch {
+        summaryMd = null;
+    }
     return { evidencePath, record, summaryMd };
 }
 

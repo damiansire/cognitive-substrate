@@ -42,6 +42,20 @@ function isNonEmptyString(value: unknown): value is string {
     return typeof value === 'string' && value.trim().length > 0;
 }
 
+/**
+ * A client-supplied session `?path=` is only ever a workspace-relative evidence dir under
+ * `runs/`. Reject absolute paths, `..` segments and anything outside `runs/` so the route
+ * can't be pointed at arbitrary files (path traversal). Normalized with POSIX + Windows
+ * separators since the query param may carry either.
+ */
+function isSafeEvidencePath(requested: string): boolean {
+    const normalized = requested.replace(/\\/g, '/');
+    if (path.isAbsolute(requested) || normalized.startsWith('/')) return false;
+    const parts = normalized.split('/').filter(Boolean);
+    if (parts[0] !== 'runs' || parts.length < 2) return false;
+    return !parts.includes('..') && !parts.includes('.');
+}
+
 /** `?days=` on any KPI-bearing route: a positive integer, defaulting to 7. Never lets a
  * malformed/negative value reach `computeWorkspaceKpis` and produce a bogus window. */
 function parsePeriodDays(query: URLSearchParams): number {
@@ -114,6 +128,12 @@ export async function handleApiRequest(
     if (segments.length === 4 && segments[3] === 'sessions') {
         if (method !== 'GET') return { status: 405, payload: { error: 'método no soportado' } };
         const requested = query.get('path');
+        if (requested && requested !== 'latest' && !isSafeEvidencePath(requested)) {
+            // Reject traversal at the edge with a clear error. `getSessionTrace` also
+            // confines to the workspace (defense in depth), but a client should never be
+            // able to point this route at anything outside `runs/`.
+            return { status: 400, payload: { error: "parámetro 'path' inválido: debe ser una ruta bajo runs/" } };
+        }
         const evidencePath = !requested || requested === 'latest' ? getLatestRunPath(ws.path) : requested;
         if (!evidencePath) {
             return { status: 404, payload: { error: 'no hay sesiones registradas todavía' } };
