@@ -3,6 +3,7 @@ import * as http from 'http';
 import { handleApiRequest } from './router';
 import { watchWorkspace } from './events';
 import { resolveWorkspaces } from '@cognitive-substrate/engine';
+import { resolveHost, resolveAllowedOrigins, corsHeaders, requireTokenAuth, isAuthorizedPost } from './security';
 
 /**
  * Small REST backend exposing the same read-model the CLI and TUI already use
@@ -17,6 +18,9 @@ import { resolveWorkspaces } from '@cognitive-substrate/engine';
 
 const PORT = Number(process.env['WEB_SERVER_PORT'] ?? 4720);
 const ROOT_DIR = process.env['CSOS_ROOT'] ?? process.cwd();
+const HOST = resolveHost();
+const ALLOWED_ORIGINS = resolveAllowedOrigins();
+const AUTH_TOKEN = requireTokenAuth();
 
 /** Every open SSE connection, so `SIGINT` can close them for a clean process exit. */
 const sseClients = new Set<http.ServerResponse>();
@@ -81,11 +85,11 @@ function readBody(req: http.IncomingMessage): Promise<unknown> {
 }
 
 const server = http.createServer(async (req, res) => {
-    // CORS: only the local dev servers of apps/web need this; this is not a
-    // public-facing service.
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'content-type');
+    // CORS restricted to an explicit allowlist (never '*'): the real app is same-origin
+    // via Angular's dev proxy, so this only covers a directly-served dev origin.
+    for (const [key, value] of Object.entries(corsHeaders(req.headers.origin, ALLOWED_ORIGINS))) {
+        res.setHeader(key, value);
+    }
 
     if (req.method === 'OPTIONS') {
         res.writeHead(204);
@@ -95,6 +99,13 @@ const server = http.createServer(async (req, res) => {
 
     const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
     if (tryHandleEvents(req, res, url.pathname)) return;
+
+    // State-changing POSTs require the local token when one is configured.
+    if (!isAuthorizedPost(req.method ?? 'GET', req.headers['x-csos-token'], AUTH_TOKEN)) {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'no autorizado: falta o no coincide x-csos-token' }));
+        return;
+    }
 
     const body = req.method === 'POST' ? await readBody(req) : undefined;
     const { status, payload } = await handleApiRequest(
@@ -109,8 +120,9 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify(payload));
 });
 
-server.listen(PORT, () => {
-    console.log(`>>> [web-server] Escuchando en http://localhost:${PORT} (CSOS_ROOT=${ROOT_DIR})`);
+server.listen(PORT, HOST, () => {
+    const authNote = AUTH_TOKEN ? ' · token requerido en POST' : '';
+    console.log(`>>> [web-server] Escuchando en http://${HOST}:${PORT} (CSOS_ROOT=${ROOT_DIR})${authNote}`);
 });
 
 process.on('SIGINT', () => {
