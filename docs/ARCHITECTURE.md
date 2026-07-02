@@ -25,7 +25,32 @@ packages/
   gemini-agent-loop/  The tool-calling loop against @google/genai + a JSON client.
   engine/             The OS kernel: the end-to-end milestone loop (see below).
 apps/
-  cli/                Thin entrypoint: wizard, mode detection, --daemon loop.
+  cli/                Wizard/mode-detection/--daemon loop, plus real subcommands
+                      (status/inbox/board/session/approve/ask) in commands.ts.
+  tui/                Ink-based terminal UI: Home/Inbox/Board/Session views over the
+                      same engine read-model, with interactive approval actions.
+  web-server/         REST backend (plain http.createServer) wrapping the same
+                      read-model + approvalActions for the browser UI, plus a
+                      `GET .../events` SSE stream (`events.ts`, `fs.watch`-based) that
+                      pushes on real file changes — the one deliberate exception to
+                      "every route is a pure request→response function" (see the
+                      comment in `index.ts`). The TUI still polls the filesystem
+                      directly (same process/machine as the files, push wouldn't help).
+  web/                Angular (standalone + signals) browser dashboard, 10 routes:
+                      Home/Inbox/Board/Session (core), Project/Departments/Portfolio
+                      (KPIs derived from runs/incidents/approvals — never invented,
+                      see `engine/kpis.ts`), Artifacts/Environment/Learning
+                      (introspection — each says explicitly what it can't show, e.g.
+                      no code diffs, no CPU/memory), plus a topbar ask bar
+                      (`features/ask-bar`) wired to `engine/askRouter.ts`. `PollingClock`
+                      opens an `EventSource` to `web-server`'s SSE endpoint for the
+                      active project, with the 3s poll kept as a floor (no project
+                      selected yet, SSE down, proxies that don't support
+                      `text/event-stream`). Has its own build/typecheck (`ng build`/
+                      `ng test`) — not part of the root `tsc --build` composite graph,
+                      and not yet wired into `.github/workflows/ci.yml` (known gap, not
+                      silent: root lint/format DO cover its `.ts` files, but there's no
+                      dedicated CI step running `ng build`/`ng test` yet).
 docs/                 vision/ (charter, split into parts) + this file.
 ```
 
@@ -73,12 +98,15 @@ an interval with graceful `AbortSignal`/SIGINT shutdown.
 - **Terminal (`sandbox-terminal`): cwd-confined + governed, not VM-isolated.** `cwd` is
   set to the workspace with a hard timeout. Every command now passes through the
   **governance approval gate** (`packages/governance`): commands classified as dangerous
-  (destructive fs ops, privilege escalation, network egress, push/publish) are **denied
-  by default in autonomous mode** and every invocation is written to an append-only
-  `audit.log`. This is real policy + auditing, but a native shell could still, in
-  principle, reach outside the workspace — so it is **not** VM-level isolation.
-  Container isolation remains roadmap. **Still: don't run untrusted prompts on a machine
-  you care about.**
+  (destructive fs ops, privilege escalation, network egress, push/publish) are, depending
+  on `governance.json`'s `mode`, **denied by default** (`'deny'`, autonomous mode),
+  **allowed** (`'allow'`, explicit opt-in), or **deferred to a human** (`'defer'`) —
+  queued as a `PendingApproval` (`governance/approvals.ts`) that the CLI (`approve`) or
+  TUI (Inbox view) can approve/deny/modify, once or as a standing allow/deny rule. Every
+  invocation is written to an append-only `audit.log` regardless of mode. This is real
+  policy + auditing, but a native shell could still, in principle, reach outside the
+  workspace — so it is **not** VM-level isolation. Container isolation remains roadmap.
+  **Still: don't run untrusted prompts on a machine you care about.**
 
 - **Bounded autonomy (`governance`): enforced.** Per-task budgets cap model round-trips
   and tool calls; a `governance.json` in the workspace can tune mode/allow/deny/budgets
@@ -113,14 +141,25 @@ keeps the whole loop runnable offline and is what the test suite exercises.
 | Eval harness (capability/regression/adversarial) | ✅ implemented | `packages/evals` |
 | Self-improvement loop | ✅ implemented | `engine/improve.ts`, orchestrator |
 | Budgets / approval gate / audit | ✅ implemented | `packages/governance` |
+| Human-in-the-loop approval queue (`mode: 'defer'`) | ✅ implemented | `governance/approvals.ts`, `engine/tasks.ts: markTaskAwaitingApproval` |
+| Stable task identity + evidence-per-task drill-down | ✅ implemented | `engine/tasks.ts: (task-id:...)`, `evidence.ts: buildTaskEvidenceIndex` |
+| Ask bar with real NLU (12 verbs, Gemini + heuristic fallback), shared CLI/web/TUI | ✅ implemented | `engine/ask.ts`, `askRouter.ts` |
+| CLI real subcommands (status/inbox/board/session/approve/ask) | ✅ implemented | `apps/cli/src/commands.ts` |
+| TUI (Home/Inbox/Board/Session/Ask, altitude nav incl. per-task drill-down, approval actions) | ✅ implemented (filesystem polling, no push — same process/machine as the files, push wouldn't help) | `apps/tui` |
+| Web REST backend over the same read-model | ✅ implemented | `apps/web-server` |
+| Live push (SSE on real file changes, 3s poll kept as floor) | ✅ implemented | `apps/web-server/events.ts`, `apps/web/.../polling-clock.ts` |
+| Web UI — core (Home/Inbox/Board/Session, approve/deny/modify, per-task drill-down) | ✅ implemented (no CI step yet) | `apps/web` |
+| Web UI — KPIs/rollups (Project/Departments/Portfolio), derived only from real runs/incidents/approvals | ✅ implemented (no CI step yet) | `engine/kpis.ts`, `apps/web/.../{project,departments,portfolio}` |
+| Web UI — introspection (Artifacts/Environment/Learning), honest empty-states for what isn't derivable | ✅ implemented (no CI step yet) | `apps/web/.../{artifacts,environment,learning}` |
 | Observability (incidents + audit trail) | ✅ implemented | `engine/incidents.ts`, `governance/audit.ts` |
-| Recurring tasks (cadence) | ✅ implemented | `engine/recurring.ts` |
+| Recurring tasks (cadence in engine ticks, not calendar dates) | ✅ implemented | `engine/recurring.ts` |
 | Multi-worker pull-based claiming | ✅ implemented | `engine/claims.ts` |
 | Multi-MACHINE coordination (configurable) | ✅ local fs / http server | `engine/coordination.ts`, `apps/coordinator` |
 | Strong sandbox (container exec) | 🟡 optional (needs Docker) | `sandbox-container` |
 | Browser domain (read + JS render) | 🟡 render via optional Playwright | `sandbox-browser` |
 | Interactive browser (navigate/click/type/screenshot) | ✅ wired (needs Playwright at runtime) | `sandbox-browser/session.ts` + agent loop |
 | Desktop automation (GUI control) | ❌ not yet | roadmap |
+| Business domain objects (contracts/leads/billing/budget-in-$/headcount/risk register) | ❌ not yet — no entity anywhere, shown as explicit empty states, never mocked | roadmap (charter Part 8) |
 | CI (build+lint+format+test gate on push/PR) | ✅ implemented | `.github/workflows/ci.yml` |
 | Linter / formatter | ✅ implemented | `eslint.config.mjs`, `.prettierrc.json` |
 
