@@ -46,6 +46,17 @@ the OS holds is a file on your disk.
   Choose the backend in `governance.json`: `local` (filesystem, one machine/shared volume)
   or `http` (a shared coordination server — `npm run coordinator` — so workers on
   different machines claim the same tasks safely; fail-safe if the server is down).
+- ✅ **Interfaces & UX (Vision part 7, real slice — not the full doctrine).** Three
+  surfaces over one shared read-model (`readModel.ts`): a CLI
+  (`status`/`inbox`/`board`/`session`/`approve`/`ask`), an Ink **TUI**, and an Angular
+  **web dashboard** (`npm run web-server` + the `apps/web` dev server). On top of that: a
+  human-in-the-loop **approval queue** (approve/deny/modify, once or as a standing rule)
+  when governance is in `defer` mode; a universal **ask bar** (real intent classification
+  via Gemini, heuristic fallback offline); **live push** to the web UI via SSE on file
+  changes (polling kept as a floor); per-task **drill-down** to its exact session; and
+  derived **KPI / project / empresa / portfolio** views computed *only* from real
+  runs/incidents/approvals — never mocked, with honest empty states where no real business
+  data exists yet.
 - 🟡 **Strong sandbox** — opt-in container execution (`"terminal":"container"`); runs
   shell commands inside an isolated Docker container, fail-safe if Docker is absent.
 - 🟡 **Browser domain** — egress-gated web access. Stateless `fetchUrl` reads a page's
@@ -70,8 +81,14 @@ the OS holds is a file on your disk.
 ## Roadmap (designed in the Vision, not yet built)
 
 - ❌ **Desktop automation** — GUI control of arbitrary applications.
-- ❌ **Full UX/interface doctrine** — ask bar, core views, approval UX (Vision part 7).
-- ❌ **Company- & science-OS domains** — domain-specific capabilities (Vision part 8).
+- 🟡 **Full UX/interface doctrine (Vision part 7)** — the core surfaces, ask bar, approval
+  UX, live push and KPI/portfolio views exist (see above); still missing pieces of the
+  full doctrine: NLU is classification+heuristic (not deep understanding), push is
+  `fs.watch`-based (not a real event bus), and `[recurring]` cadence is in engine ticks,
+  not calendar dates.
+- ❌ **Company- & science-OS domain objects (Vision part 8)** — the empresa/portfolio
+  *views* exist as KPIs derived from real data, but domain-specific business entities
+  (contracts, leads, billing, budget-in-$, headcount) have no backing model yet.
 
 See [`docs/ESTADO-Y-PENDIENTES.md`](docs/ESTADO-Y-PENDIENTES.md) for the honest status and
 concrete pending items.
