@@ -34,6 +34,21 @@ function isWithin(iso: string, sinceMs: number): boolean {
     return Number.isFinite(t) && t >= sinceMs;
 }
 
+/**
+ * The start time encoded in a run directory name, in epoch ms, or null if the name isn't
+ * timestamp-prefixed (a legacy layout). Run dirs are `${evidenceStamp(startedAt)}-<slug>`
+ * (see `evidence.ts`), i.e. an ISO timestamp with `:`/`.` rewritten to `-`
+ * (`2026-07-05T05-13-00-000Z-slug`). Reversing that fixed shape lets the KPI scan decide
+ * whether a run is in-window WITHOUT reading its `run.json`.
+ */
+function runDirStartedAtMs(evidencePath: string): number | null {
+    const name = evidencePath.split(/[\\/]/).pop() ?? '';
+    const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z/.exec(name);
+    if (!m) return null;
+    const t = Date.parse(`${m[1]}T${m[2]}:${m[3]}:${m[4]}.${m[5]}Z`);
+    return Number.isFinite(t) ? t : null;
+}
+
 /** Computes `WorkspaceKpis` over the trailing `periodDays` days from `now`. */
 export function computeWorkspaceKpis(
     workspacePath: string,
@@ -42,10 +57,18 @@ export function computeWorkspaceKpis(
 ): WorkspaceKpis {
     const sinceMs = now.getTime() - periodDays * 24 * 60 * 60 * 1000;
 
-    const runs: RunRecord[] = listRuns(workspacePath)
-        .map((evidencePath) => readRun(workspacePath, evidencePath))
-        .filter((r): r is RunRecord => r !== null)
-        .filter((r) => isWithin(r.startedAt, sinceMs));
+    // Early-terminate: `listRuns` returns dirs newest-first and their names are
+    // timestamp-prefixed, so once we reach one that starts before the window every
+    // remaining dir is older too — stop without reading it. Only `readRun` for in-window
+    // (or legacy, unparseable-name) candidates. Keeps behavior identical to the old
+    // full-scan + filter, but bounds the work to the window instead of all of history.
+    const runs: RunRecord[] = [];
+    for (const evidencePath of listRuns(workspacePath)) {
+        const dirMs = runDirStartedAtMs(evidencePath);
+        if (dirMs !== null && dirMs < sinceMs) break;
+        const record = readRun(workspacePath, evidencePath);
+        if (record !== null && isWithin(record.startedAt, sinceMs)) runs.push(record);
+    }
 
     const runsTotal = runs.length;
     const runsVerified = runs.filter((r) => r.verdict.verified).length;
