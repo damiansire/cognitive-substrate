@@ -77,6 +77,55 @@ describe('task mutations', () => {
     });
 });
 
+describe('$-sequence safety (task text is untrusted: goal.md + LLM decomposition)', () => {
+    // `String.prototype.replace`'s 2nd arg treats `$&`, `$$`, `` $` `` and `$'` as match
+    // references. Task text carrying those must survive verbatim into tasks.md, never get
+    // duplicated/mutilated — this is the OS's central filesystem-state contract.
+    const NASTY = 'Cobrar $5 y usar $& $$ $` $\' literalmente';
+
+    it('markTaskDone preserves $ sequences in the task line', () => {
+        const src = `## [now]\n- [ ] ${NASTY}\n`;
+        const out = markTaskDone(src, `- [ ] ${NASTY}`);
+        expect(out).toContain(`- [x] ${NASTY}`);
+        // The bug duplicated/mutilated the line: assert it survives as exactly one line.
+        expect(out.split('\n').filter((l) => l.includes('Cobrar')).length).toBe(1);
+    });
+
+    it('markTaskFailed preserves $ sequences', () => {
+        const src = `## [now]\n- [ ] ${NASTY}\n`;
+        const out = markTaskFailed(src, `- [ ] ${NASTY}`);
+        expect(out).toContain(`- [!] ${NASTY}`);
+        expect(out.split('\n').filter((l) => l.includes('Cobrar')).length).toBe(1);
+    });
+
+    it('appendTasksToNow preserves $ sequences and stays parseable', () => {
+        const out = appendTasksToNow('# Plan\n\n## [now]\n', [NASTY]);
+        const now = parseTasks(out).now;
+        expect(now).toHaveLength(1);
+        expect(humanTaskText(now[0]!)).toBe(NASTY);
+    });
+
+    it('addImproveTask preserves $ sequences', () => {
+        const out = addImproveTask(SAMPLE, NASTY);
+        expect(out).toContain(`- [ ] ${NASTY}`);
+    });
+
+    it('appendTaskToRecurring preserves $ sequences', () => {
+        const out = appendTaskToRecurring(SAMPLE, NASTY);
+        const line = parseTasks(out).recurring.find((l) => l.includes('Cobrar'))!;
+        expect(humanTaskText(line)).toBe(`@every:1 ${NASTY}`);
+    });
+
+    it('the full defer -> block -> requeue cycle preserves $ sequences', () => {
+        const withTask = appendTasksToNow('# Plan\n\n## [now]\n', [NASTY]);
+        const taskLine = parseTasks(withTask).now[0]!;
+        const blocked = markTaskAwaitingApproval(withTask, taskLine, 'appr-9');
+        expect(parseTasks(blocked).now).toHaveLength(0);
+        const requeued = requeueApprovedTask(blocked, 'appr-9');
+        expect(humanTaskText(parseTasks(requeued).now[0]!)).toBe(NASTY);
+    });
+});
+
 describe('markTaskAwaitingApproval / requeueApprovedTask (approval-gate defer cycle)', () => {
     it('moves the task out of [now] into [blocked], annotated with the approval id', () => {
         const out = markTaskAwaitingApproval(SAMPLE, '- [ ] Tarea activa A', 'appr-1');

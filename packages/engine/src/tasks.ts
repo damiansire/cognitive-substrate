@@ -67,14 +67,31 @@ export function parseTasks(content: string): TaskQueues {
     return queues;
 }
 
+/**
+ * Replaces the first line exactly equal to `target` with `replacement` (which may itself
+ * span multiple lines). Operates on split lines instead of `String.prototype.replace` on
+ * purpose: task/header text comes from `goal.md` (human) and the LLM decomposition, and
+ * `replace`'s second argument interprets `$&`, `$$`, `` $` `` and `$'` as match
+ * references — a task containing a `$` would silently duplicate or mutilate its own line
+ * in the filesystem state that is this OS's central contract. No-op if `target` isn't
+ * found (mirrors the old `replace` semantics for a missing needle).
+ */
+function replaceFirstLine(content: string, target: string, replacement: string): string {
+    const lines = content.split('\n');
+    const idx = lines.indexOf(target);
+    if (idx === -1) return content;
+    lines.splice(idx, 1, replacement);
+    return lines.join('\n');
+}
+
 /** Marks a specific task line as completed (`- [ ]` → `- [x]`). */
 export function markTaskDone(content: string, taskLine: string): string {
-    return content.replace(taskLine, taskLine.replace('- [ ]', '- [x]'));
+    return replaceFirstLine(content, taskLine, taskLine.replace('- [ ]', '- [x]'));
 }
 
 /** Marks a specific task line as failed (`- [ ]` → `- [!]`). */
 export function markTaskFailed(content: string, taskLine: string): string {
-    return content.replace(taskLine, taskLine.replace('- [ ]', '- [!]'));
+    return replaceFirstLine(content, taskLine, taskLine.replace('- [ ]', '- [!]'));
 }
 
 const IMPROVE_HEADER = '## [improve]';
@@ -87,7 +104,7 @@ export function addImproveTask(content: string, text: string): string {
     const item = `- [ ] ${text.trim()}`;
     const headerLine = content.split('\n').find((l) => l.includes(IMPROVE_HEADER));
     if (headerLine) {
-        return content.replace(headerLine, `${headerLine}\n${item}`);
+        return replaceFirstLine(content, headerLine, `${headerLine}\n${item}`);
     }
     const trimmed = content.endsWith('\n') ? content : `${content}\n`;
     return `${trimmed}\n${IMPROVE_HEADER} - Auto-Mejora y Correcciones\n${item}\n`;
@@ -118,7 +135,7 @@ export function appendTasksToNow(content: string, tasks: string[], now: Date = n
     const items = tasks.map((t) => `- [ ] ${t.trim()} (task-id:${generateTaskId(now)})`).join('\n');
     const nowHeader = content.split('\n').find((l) => l.includes('## [now]'));
     if (nowHeader) {
-        return content.replace(nowHeader, `${nowHeader}\n${items}`);
+        return replaceFirstLine(content, nowHeader, `${nowHeader}\n${items}`);
     }
     const trimmed = content.endsWith('\n') ? content : `${content}\n`;
     return `${trimmed}\n## [now]\n${items}\n`;
@@ -137,7 +154,7 @@ export function appendTaskToRecurring(content: string, task: string, now: Date =
     const item = `- [ ] @every:1 ${task.trim()} (task-id:${generateTaskId(now)})`;
     const headerLine = content.split('\n').find((l) => l.includes(RECURRING_HEADER));
     if (headerLine) {
-        return content.replace(headerLine, `${headerLine}\n${item}`);
+        return replaceFirstLine(content, headerLine, `${headerLine}\n${item}`);
     }
     const trimmed = content.endsWith('\n') ? content : `${content}\n`;
     return `${trimmed}\n${RECURRING_HEADER}\n${item}\n`;
@@ -166,7 +183,7 @@ export function markTaskAwaitingApproval(content: string, taskLine: string, appr
 
     const headerLine = withoutTask.split('\n').find((l) => l.includes(BLOCKED_HEADER));
     if (headerLine) {
-        return withoutTask.replace(headerLine, `${headerLine}\n${item}`);
+        return replaceFirstLine(withoutTask, headerLine, `${headerLine}\n${item}`);
     }
     const trimmed = withoutTask.endsWith('\n') ? withoutTask : `${withoutTask}\n`;
     return `${trimmed}\n${BLOCKED_HEADER}\n${item}\n`;
@@ -189,7 +206,7 @@ export function requeueApprovedTask(content: string, approvalId: string): string
 
     const nowHeader = withoutBlocked.split('\n').find((l) => l.includes('## [now]'));
     if (nowHeader) {
-        return withoutBlocked.replace(nowHeader, `${nowHeader}\n${restored}`);
+        return replaceFirstLine(withoutBlocked, nowHeader, `${nowHeader}\n${restored}`);
     }
     const trimmed = withoutBlocked.endsWith('\n') ? withoutBlocked : `${withoutBlocked}\n`;
     return `${trimmed}\n## [now]\n${restored}\n`;
