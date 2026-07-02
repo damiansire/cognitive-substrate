@@ -14,7 +14,7 @@ export function parseFrontmatter(fileContent: string): any {
     if (match && match[1]) {
         try {
             return yaml.parse(match[1]);
-        } catch (e) {
+        } catch {
             return null;
         }
     }

@@ -17,7 +17,11 @@ describe('htmlToText', () => {
 
 describe('browserTools.fetchText — raw fetch fallback (no driver)', () => {
     it('returns extracted text from a fetched page (injected fetch)', async () => {
-        const fakeFetch: FetchLike = async () => ({ ok: true, status: 200, text: async () => '<p>Contenido de prueba</p>' });
+        const fakeFetch: FetchLike = async () => ({
+            ok: true,
+            status: 200,
+            text: async () => '<p>Contenido de prueba</p>'
+        });
         const out = await browserTools.fetchText('https://example.com', fakeFetch, noDriver);
         expect(out).toContain('Contenido de prueba');
     });
@@ -34,14 +38,22 @@ describe('browserTools.fetchText — rendered path (driver present)', () => {
         let navigated = '';
         let closed = false;
         const fakeDriver: BrowserDriver = {
-            async navigate(url) { navigated = url; },
-            async readText() { return 'TEXTO RENDERIZADO POR JS'; },
+            async navigate(url) {
+                navigated = url;
+            },
+            async readText() {
+                return 'TEXTO RENDERIZADO POR JS';
+            },
             async click() {},
             async type() {},
             async screenshot() {},
-            async close() { closed = true; }
+            async close() {
+                closed = true;
+            }
         };
-        const neverFetch: FetchLike = async () => { throw new Error('no debería usar fetch'); };
+        const neverFetch: FetchLike = async () => {
+            throw new Error('no debería usar fetch');
+        };
         const out = await browserTools.fetchText('https://spa.example', neverFetch, async () => fakeDriver);
         expect(out).toContain('TEXTO RENDERIZADO POR JS');
         expect(navigated).toBe('https://spa.example');

@@ -14,6 +14,8 @@
     "start": "tsx apps/cli/src/index.ts",
     "daemon": "tsx apps/cli/src/index.ts --daemon",
     "coordinator": "tsx apps/coordinator/src/index.ts",
+    "tui": "tsx apps/tui/src/index.tsx",
+    "web-server": "tsx apps/web-server/src/index.ts",
     "build": "tsc --build",
     "build:bundle": "npm run build -w apps/cli",
     "clean": "tsc --build --clean",
@@ -21,17 +23,27 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "eval": "tsx packages/evals/src/cli.ts",
-    "typecheck": "tsc --build --noEmit"
+    "typecheck": "tsc --build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.0.1",
+    "eslint": "^10.6.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4",
     "tsup": "^8.5.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.1",
     "vitest": "^3.2.4"
   },
   "workspaces": [

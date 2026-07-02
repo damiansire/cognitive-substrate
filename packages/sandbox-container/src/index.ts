@@ -86,7 +86,9 @@ export const containerTools = {
                 (error, stdout, stderr) => {
                     if (error) {
                         if ((error as any).killed) {
-                            resolve(`Error Crítico: el comando excedió ${timeout / 1000}s en el contenedor y fue abortado.`);
+                            resolve(
+                                `Error Crítico: el comando excedió ${timeout / 1000}s en el contenedor y fue abortado.`
+                            );
                             return;
                         }
                         resolve(`Container command failed. ${stderr || error.message}`);

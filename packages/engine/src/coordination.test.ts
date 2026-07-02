@@ -34,13 +34,18 @@ describe('ClaimStore (server-side locks)', () => {
 describe('handleCoordinationRequest', () => {
     it('routes /claim, /status and /release', () => {
         const store = new ClaimStore();
-        expect(handleCoordinationRequest(store, '/claim', { namespace: 'n', taskKey: 't', workerId: 'A', ttlMs: 1000 }, 0))
-            .toEqual({ status: 200, payload: { claimed: true } });
-        expect(handleCoordinationRequest(store, '/status', { namespace: 'n', taskKey: 't' }, 1))
-            .toEqual({ status: 200, payload: { claimed: true } });
+        expect(
+            handleCoordinationRequest(store, '/claim', { namespace: 'n', taskKey: 't', workerId: 'A', ttlMs: 1000 }, 0)
+        ).toEqual({ status: 200, payload: { claimed: true } });
+        expect(handleCoordinationRequest(store, '/status', { namespace: 'n', taskKey: 't' }, 1)).toEqual({
+            status: 200,
+            payload: { claimed: true }
+        });
         handleCoordinationRequest(store, '/release', { namespace: 'n', taskKey: 't', workerId: 'A' }, 2);
-        expect(handleCoordinationRequest(store, '/status', { namespace: 'n', taskKey: 't' }, 3))
-            .toEqual({ status: 200, payload: { claimed: false } });
+        expect(handleCoordinationRequest(store, '/status', { namespace: 'n', taskKey: 't' }, 3)).toEqual({
+            status: 200,
+            payload: { claimed: false }
+        });
     });
     it('rejects missing fields', () => {
         const store = new ClaimStore();
@@ -82,7 +87,9 @@ describe('HttpClaimBackend', () => {
         expect(await b.claim('t', 'B')).toBe(false); // already claimed on the server
 
         // Server unreachable -> fail-safe: do NOT claim.
-        const downFetch: FetchLike = async () => { throw new Error('ECONNREFUSED'); };
+        const downFetch: FetchLike = async () => {
+            throw new Error('ECONNREFUSED');
+        };
         const c = new HttpClaimBackend('http://coord.test', 'ws', downFetch);
         expect(await c.claim('z', 'C')).toBe(false);
     });

@@ -15,8 +15,10 @@ import {
     parseTasks,
     markTaskDone,
     markTaskFailed,
+    markTaskAwaitingApproval,
     addImproveTask,
-    appendTasksToNow
+    appendTasksToNow,
+    extractTaskId
 } from './tasks';
 import type { WorkspaceResult } from './types';
 
@@ -81,15 +83,10 @@ export async function processWorkspace(
     // those are empty too, run any DUE [recurring] task. This is the full queue policy.
     const fromNow = queues.now[0];
     const fromImprove = !fromNow ? queues.improve[0] : undefined;
-    const fromRecurring =
-        !fromNow && !fromImprove ? nextDueRecurring(workspacePath, queues.recurring, tick) : null;
+    const fromRecurring = !fromNow && !fromImprove ? nextDueRecurring(workspacePath, queues.recurring, tick) : null;
 
     const activeTask = fromNow ?? fromImprove ?? fromRecurring ?? undefined;
-    const origin: 'now' | 'improve' | 'recurring' = fromNow
-        ? 'now'
-        : fromImprove
-          ? 'improve'
-          : 'recurring';
+    const origin: 'now' | 'improve' | 'recurring' = fromNow ? 'now' : fromImprove ? 'improve' : 'recurring';
     if (!activeTask) {
         return { project, pendingNow: 0, run: null, incidents: countIncidents(workspacePath), summary: '' };
     }
@@ -134,6 +131,23 @@ async function runClaimedTask(
     const coreMemory = `Proyecto: ${project}\n`;
     const execution = await executeTaskWithLLM(workspacePath, activeTask, coreMemory);
 
+    // A dangerous command was deferred to a human (governance mode 'defer'): the task
+    // isn't done and it isn't a failure either — it's paused. Skip verify/evidence/
+    // learning/incidents entirely; the audit trail already lives in the PendingApproval
+    // itself (`approvals.json`) plus the tool-call audit log.
+    if (execution.awaitingApproval) {
+        const { approvalId } = execution.awaitingApproval;
+        const summary = `[${project}] ⏸️ Esperando aprobación humana (id: ${approvalId}): ${activeTask.trim()}`;
+        if (origin === 'recurring') {
+            // Left untouched under [recurring] — idempotent request() means retrying
+            // next cadence won't spam duplicate pending approvals.
+            return { project, pendingNow, run: null, incidents: countIncidents(workspacePath), summary };
+        }
+        const tasksContent = markTaskAwaitingApproval(fs.readFileSync(tasksPath, 'utf8'), activeTask, approvalId);
+        fs.writeFileSync(tasksPath, tasksContent, 'utf8');
+        return { project, pendingNow, run: null, incidents: countIncidents(workspacePath), summary };
+    }
+
     const verdict = await verifyTask(workspacePath, activeTask, execution.log, execution.success);
     const learning = await distillLearning(activeTask, verdict, execution.log);
     const finishedAt = clock();
@@ -146,7 +160,8 @@ async function runClaimedTask(
         executionSuccess: execution.success,
         verdict,
         log: execution.log,
-        learning
+        learning,
+        taskId: extractTaskId(activeTask) ?? undefined
     });
 
     appendLearning(workspacePath, learning, finishedAt);
@@ -155,12 +170,16 @@ async function runClaimedTask(
     if (origin === 'recurring') {
         markRecurringRan(workspacePath, activeTask, tick);
         if (!verdict.verified) {
-            recordIncident(workspacePath, {
-                severity: 'warning',
-                task: activeTask.trim(),
-                reason: verdict.reason,
-                evidencePath: run.evidencePath
-            }, finishedAt);
+            recordIncident(
+                workspacePath,
+                {
+                    severity: 'warning',
+                    task: activeTask.trim(),
+                    reason: verdict.reason,
+                    evidencePath: run.evidencePath
+                },
+                finishedAt
+            );
         }
         const tag = verdict.verified ? '🔁 Recurrente OK' : '🔁 Recurrente con incidencia';
         return {
@@ -187,12 +206,16 @@ async function runClaimedTask(
             tasksContent = addImproveTask(tasksContent, improvement);
         }
         triggerFailureLog(workspacePath, activeTask, verdict.reason, finishedAt);
-        recordIncident(workspacePath, {
-            severity: 'error',
-            task: activeTask.trim(),
-            reason: verdict.reason,
-            evidencePath: run.evidencePath
-        }, finishedAt);
+        recordIncident(
+            workspacePath,
+            {
+                severity: 'error',
+                task: activeTask.trim(),
+                reason: verdict.reason,
+                evidencePath: run.evidencePath
+            },
+            finishedAt
+        );
         const tag = origin === 'improve' ? '❌ Mejora no resuelta' : '❌ No verificado';
         summary = `[${project}] ${tag}: ${activeTask.trim()} (evidencia: ${run.evidencePath})`;
     }
@@ -212,9 +235,7 @@ function triggerFailureLog(workspacePath: string, task: string, reason: string, 
  */
 export function discoverWorkspaces(workspacesDir: string): string[] {
     if (!fs.existsSync(workspacesDir)) return [];
-    return fs
-        .readdirSync(workspacesDir)
-        .filter((f) => fs.statSync(path.join(workspacesDir, f)).isDirectory());
+    return fs.readdirSync(workspacesDir).filter((f) => fs.statSync(path.join(workspacesDir, f)).isDirectory());
 }
 
 /**
@@ -224,7 +245,5 @@ export function discoverWorkspaces(workspacesDir: string): string[] {
  */
 export async function runOnce(workspacesDir: string, clock: Clock = systemClock): Promise<WorkspaceResult[]> {
     const projects = discoverWorkspaces(workspacesDir);
-    return Promise.all(
-        projects.map((project) => processWorkspace(path.join(workspacesDir, project), project, clock))
-    );
+    return Promise.all(projects.map((project) => processWorkspace(path.join(workspacesDir, project), project, clock)));
 }

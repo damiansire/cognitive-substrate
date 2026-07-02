@@ -33,7 +33,11 @@ export const terminalTools = {
      *   (e.g. `npm test`) can opt into a longer bound without changing the default.
      * @returns A promise resolving to the command output, or an error message.
      */
-    runCommand(workspacePath: string, args: { command: string }, timeoutMs: number = COMMAND_TIMEOUT_MS): Promise<string> {
+    runCommand(
+        workspacePath: string,
+        args: { command: string },
+        timeoutMs: number = COMMAND_TIMEOUT_MS
+    ): Promise<string> {
         const command = args?.command ?? '';
         console.log(`>>> [Sandbox] Ejecutando en ${workspacePath}: ${command}`);
 
@@ -68,9 +72,7 @@ export const terminalTools = {
                             return;
                         }
                         const code = (error as any).code ?? 'desconocido';
-                        resolve(
-                            `Command failed. Exit code: ${code}. Stderr: ${stderr || error.message}`
-                        );
+                        resolve(`Command failed. Exit code: ${code}. Stderr: ${stderr || error.message}`);
                         return;
                     }
                     resolve(stdout || 'Command executed successfully with no output.');

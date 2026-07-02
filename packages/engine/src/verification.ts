@@ -67,9 +67,7 @@ export async function behavioralCheck(workspacePath: string, task: string): Prom
     return {
         name: 'verificacion-real',
         passed,
-        detail: passed
-            ? `"${command}" se ejecutó correctamente.`
-            : `"${command}" falló: ${output.slice(0, 500)}`
+        detail: passed ? `"${command}" se ejecutó correctamente.` : `"${command}" falló: ${output.slice(0, 500)}`
     };
 }
 

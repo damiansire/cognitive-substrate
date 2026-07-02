@@ -1,0 +1,12 @@
+{
+  "name": "@cognitive-substrate/web-server",
+  "version": "1.0.0",
+  "private": true,
+  "bin": {
+    "cognitive-web-server": "./dist/index.js"
+  },
+  "dependencies": {
+    "@cognitive-substrate/engine": "*",
+    "@cognitive-substrate/governance": "*"
+  }
+}

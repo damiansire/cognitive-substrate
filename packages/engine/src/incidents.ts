@@ -28,10 +28,26 @@ export function recordIncident(workspacePath: string, incident: Incident, when: 
 
 /** Counts recorded incidents in a workspace (0 if none). */
 export function countIncidents(workspacePath: string): number {
+    return listIncidents(workspacePath).length;
+}
+
+/** A recorded incident with its timestamp, as persisted by `recordIncident`. */
+export interface StoredIncident extends Incident {
+    ts: string;
+}
+
+/** Lists recorded incidents (most recent first). Malformed lines are skipped. */
+export function listIncidents(workspacePath: string): StoredIncident[] {
     const file = path.resolve(workspacePath, INCIDENTS_FILE);
-    if (!fs.existsSync(file)) return 0;
-    return fs
-        .readFileSync(file, 'utf8')
-        .split('\n')
-        .filter((l) => l.trim().length > 0).length;
+    if (!fs.existsSync(file)) return [];
+    const entries: StoredIncident[] = [];
+    for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+        if (!line.trim()) continue;
+        try {
+            entries.push(JSON.parse(line) as StoredIncident);
+        } catch {
+            // Skip a corrupted line rather than fail the whole read.
+        }
+    }
+    return entries.reverse();
 }

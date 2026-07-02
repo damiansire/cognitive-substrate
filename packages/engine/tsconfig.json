@@ -4,13 +4,9 @@
     "composite": true,
     "rootDir": "./src",
     "outDir": "./dist",
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
-  "include": [
-    "src/**/*"
-  ],
+  "include": ["src/**/*"],
   "references": [
     {
       "path": "../gemini-agent-loop"
@@ -23,6 +19,9 @@
     },
     {
       "path": "../governance"
+    },
+    {
+      "path": "../skills-parser"
     }
   ]
 }

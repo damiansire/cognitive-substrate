@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { claimTask, releaseClaim, isClaimed, claimFileName } from './claims';
+import { claimTask, releaseClaim, isClaimed, claimFileName, listClaims } from './claims';
 
 let ws: string;
 beforeEach(() => {
@@ -51,5 +51,38 @@ describe('pull-based claiming', () => {
         const later = new Date('2026-06-30T00:01:00Z'); // past 1s TTL
         expect(isClaimed(ws, TASK, later)).toBe(false);
         expect(claimTask(ws, TASK, 'worker-B', 1000, later)).toBe(true);
+    });
+});
+
+describe('listClaims', () => {
+    it('is empty when nothing has ever claimed anything', () => {
+        expect(listClaims(ws)).toEqual([]);
+    });
+
+    it('lists a live claim with expired: false', () => {
+        const t0 = new Date('2026-06-30T00:00:00Z');
+        claimTask(ws, TASK, 'worker-A', 60_000, t0);
+        const entries = listClaims(ws, t0);
+        expect(entries).toHaveLength(1);
+        expect(entries[0].workerId).toBe('worker-A');
+        expect(entries[0].expired).toBe(false);
+    });
+
+    it('marks a claim past its TTL as expired without removing it', () => {
+        const t0 = new Date('2026-06-30T00:00:00Z');
+        claimTask(ws, TASK, 'worker-A', 1000, t0);
+        const later = new Date('2026-06-30T00:01:00Z');
+        const entries = listClaims(ws, later);
+        expect(entries).toHaveLength(1);
+        expect(entries[0].expired).toBe(true);
+    });
+
+    it('lists multiple claims, most recently claimed first', () => {
+        claimTask(ws, '- [ ] Tarea A', 'worker-A', 60_000, new Date('2026-06-30T00:00:00Z'));
+        claimTask(ws, '- [ ] Tarea B', 'worker-B', 60_000, new Date('2026-06-30T00:05:00Z'));
+        const entries = listClaims(ws, new Date('2026-06-30T00:06:00Z'));
+        expect(entries).toHaveLength(2);
+        expect(entries[0].workerId).toBe('worker-B');
+        expect(entries[1].workerId).toBe('worker-A');
     });
 });

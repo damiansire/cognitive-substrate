@@ -11,3 +11,4 @@ export * from './classify';
 export * from './decide';
 export * from './budget';
 export * from './audit';
+export * from './approvals';

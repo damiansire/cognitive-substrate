@@ -105,3 +105,27 @@ export function isClaimed(workspacePath: string, taskKey: string, now: Date = ne
     const existing = readClaim(lockPath(workspacePath, taskKey));
     return !!existing && new Date(existing.expiresAt).getTime() > now.getTime();
 }
+
+/** One claim lock file on disk, plus whether it's still live — the "máquina/entorno"
+ * view's only real data source (see `readModel.ts: getEnvironmentSnapshot`). */
+export interface StoredClaimEntry extends ClaimInfo {
+    /** The lock filename (`claimFileName`'s output) — the closest thing to a task
+     * identifier this mechanism has; not the original task text. */
+    taskKeyFile: string;
+    expired: boolean;
+}
+
+/** Lists every claim lock file under `runs/.claims/`, live or expired. Malformed or
+ * unreadable entries are skipped rather than failing the whole listing. */
+export function listClaims(workspacePath: string, now: Date = new Date()): StoredClaimEntry[] {
+    const dir = path.resolve(workspacePath, CLAIMS_DIR);
+    if (!fs.existsSync(dir)) return [];
+    const entries: StoredClaimEntry[] = [];
+    for (const file of fs.readdirSync(dir)) {
+        if (!file.endsWith('.json')) continue;
+        const info = readClaim(path.join(dir, file));
+        if (!info) continue;
+        entries.push({ ...info, taskKeyFile: file, expired: new Date(info.expiresAt).getTime() <= now.getTime() });
+    }
+    return entries.sort((a, b) => b.claimedAt.localeCompare(a.claimedAt));
+}

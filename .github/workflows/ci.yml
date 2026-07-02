@@ -1,0 +1,31 @@
+name: CI
+
+on:
+    push:
+        branches: [master, main]
+    pull_request:
+
+jobs:
+    build-lint-test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 26
+                  cache: npm
+
+            - run: npm ci
+
+            - name: Typecheck (build, project references)
+              run: npm run typecheck
+
+            - name: Lint
+              run: npm run lint
+
+            - name: Format check
+              run: npm run format:check
+
+            - name: Test
+              run: npm test

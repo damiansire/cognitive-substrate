@@ -1,0 +1,65 @@
+h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  margin: 0 0 20px;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+.list {
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.path {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kind-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--text-dim);
+  background: var(--surface-raised);
+  white-space: nowrap;
+}
+
+.kind-badge.evidence {
+  color: var(--accent);
+}
+
+.meta {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.note {
+  font-size: 12px;
+  max-width: 640px;
+}

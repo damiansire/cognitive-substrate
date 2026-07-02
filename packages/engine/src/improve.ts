@@ -1,4 +1,5 @@
 import { generateJson, hasApiKey } from '@cognitive-substrate/gemini-agent-loop';
+import { humanTaskText } from './tasks';
 import type { Verdict } from './types';
 
 const SYSTEM_PROMPT = `Eres el módulo de auto-mejora del Cognitive Substrate OS. Dada una tarea que falló su verificación y la razón, proponés UNA única acción concreta y accionable que probablemente la desbloquee la próxima vez (cambiar UNA variable, no una lista). Respondés SOLO con JSON.`;
@@ -11,7 +12,7 @@ const SYSTEM_PROMPT = `Eres el módulo de auto-mejora del Cognitive Substrate OS
  * Deterministic fallback in simulation mode.
  */
 export async function proposeImprovement(task: string, verdict: Verdict, log: string): Promise<string> {
-    const cleanTask = task.replace(/^-\s*\[[ x!]\]\s*/, '').trim();
+    const cleanTask = humanTaskText(task);
     const failedChecks = verdict.checks.filter((c) => !c.passed).map((c) => c.name);
     const fallback = `Reintentar "${cleanTask}" corrigiendo: ${verdict.reason}${
         failedChecks.length ? ` (checks fallidos: ${failedChecks.join(', ')})` : ''

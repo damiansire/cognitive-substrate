@@ -1,0 +1,11 @@
+dist
+node_modules
+workspaces
+runs
+artifacts
+evals-report
+apps/presentation
+package-lock.json
+
+# Prose formatting is cosmetic/subjective and out of scope for pipeline hygiene
+*.md

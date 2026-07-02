@@ -20,7 +20,6 @@ function getClient(): GoogleGenAI {
 
 async function withBackoff<T>(fn: () => Promise<T>): Promise<T> {
     let attempts = 0;
-    // eslint-disable-next-line no-constant-condition
     while (true) {
         try {
             return await fn();
@@ -72,7 +71,10 @@ export async function generateJson<T = unknown>(
         return JSON.parse(text) as T;
     } catch {
         // Strip markdown code fences if the model wrapped the JSON.
-        const cleaned = text.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+        const cleaned = text
+            .replace(/^```(?:json)?/i, '')
+            .replace(/```$/, '')
+            .trim();
         try {
             return JSON.parse(cleaned) as T;
         } catch {

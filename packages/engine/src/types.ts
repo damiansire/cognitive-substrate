@@ -24,6 +24,8 @@ export interface RunRecord {
     learning: string;
     /** Workspace-relative path to the evidence folder for this run. */
     evidencePath: string;
+    /** The `(task-id:...)` of the task line this run executed, if it had one. */
+    taskId?: string;
 }
 
 /** Result of processing a single workspace in one engine tick. */

@@ -6,12 +6,25 @@ function fakeDriver() {
     const calls: string[] = [];
     let closed = false;
     const driver: BrowserDriver = {
-        async navigate(url) { calls.push(`navigate:${url}`); },
-        async readText() { calls.push('readText'); return 'contenido de la página'; },
-        async click(sel) { calls.push(`click:${sel}`); },
-        async type(sel, text) { calls.push(`type:${sel}=${text}`); },
-        async screenshot(p) { calls.push(`shot:${p}`); },
-        async close() { closed = true; }
+        async navigate(url) {
+            calls.push(`navigate:${url}`);
+        },
+        async readText() {
+            calls.push('readText');
+            return 'contenido de la página';
+        },
+        async click(sel) {
+            calls.push(`click:${sel}`);
+        },
+        async type(sel, text) {
+            calls.push(`type:${sel}=${text}`);
+        },
+        async screenshot(p) {
+            calls.push(`shot:${p}`);
+        },
+        async close() {
+            closed = true;
+        }
     };
     return { driver, calls, isClosed: () => closed };
 }
@@ -27,12 +40,7 @@ describe('BrowserSession (with driver)', () => {
         expect(await session.type('#in', 'hola')).toContain('OK');
         await session.close();
 
-        expect(fake.calls).toEqual([
-            'navigate:https://x.test',
-            'readText',
-            'click:#btn',
-            'type:#in=hola'
-        ]);
+        expect(fake.calls).toEqual(['navigate:https://x.test', 'readText', 'click:#btn', 'type:#in=hola']);
         expect(fake.isClosed()).toBe(true);
     });
 });

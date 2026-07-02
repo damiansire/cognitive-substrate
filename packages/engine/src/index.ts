@@ -19,3 +19,8 @@ export * from './coordination';
 export * from './dashboard';
 export * from './orchestrator';
 export * from './daemon';
+export * from './readModel';
+export * from './approvalActions';
+export * from './ask';
+export * from './askRouter';
+export * from './kpis';

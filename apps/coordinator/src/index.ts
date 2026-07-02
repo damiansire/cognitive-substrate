@@ -49,7 +49,9 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
     console.log(`>>> [Coordinator] Servidor de claiming multi-máquina escuchando en http://0.0.0.0:${PORT}`);
-    console.log(`>>> Apuntá los workers con governance.json: { "coordination": { "mode": "http", "endpoint": "http://<host>:${PORT}" } }`);
+    console.log(
+        `>>> Apuntá los workers con governance.json: { "coordination": { "mode": "http", "endpoint": "http://<host>:${PORT}" } }`
+    );
 });
 
 process.on('SIGINT', () => {

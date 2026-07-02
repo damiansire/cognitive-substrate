@@ -26,6 +26,29 @@ Construí en este orden a menos que restricciones duras fuercen una secuencia de
 14. Expandir a los dominios de navegador, escritorio, negocios y ciencia
 15. Escalar a múltiples workers o máquinas
 
+HIGIENE DE PIPELINE (transversal, no opcional)
+
+Esto no es un paso más de la lista de arriba — corre en paralelo a TODOS los pasos
+anteriores, desde el primer commit, no al final:
+
+- CI que corra build + test en cada push/PR. No alcanza con que pasen en local.
+- Linter/formatter configurado desde el día 1, no agregado "después".
+- Cada script de `package.json` (no solo `build`/`test`) ejecutado y verificado al
+  menos una vez de forma aislada — un script que nadie corre se rompe sin que nadie
+  lo note.
+- Si el sistema tiene modo simulación/fallback (sin API key real, sin una dependencia
+  opcional instalada), marcar explícitamente en cualquier reporte de estado o de evals
+  si lo verificado fue en ese modo o contra comportamiento real — son cosas distintas,
+  y "tests verdes" no resuelve la ambigüedad por sí solo.
+
+Por qué este párrafo existe: la primera construcción de este sistema terminó con 107
+tests verdes y build limpio, pero sin CI, sin linter, y con un script `typecheck` roto
+desde el día que se escribió (nadie lo ejecutaba aislado). No fue una falla de ejecución
+del agente — el plan original simplemente no incluía nada de esto en ningún paso. Si
+estás replicando este proyecto o usando este plan como plantilla para otro, no repitas
+ese punto ciego: agregá higiene de pipeline a la lista de done de cada milestone, no la
+asumas incluida.
+
 DEFINICIÓN DEL PRIMER MILESTONE
 
 El primer milestone normalmente debería probar que el sistema puede hacer todo lo siguiente de punta a punta:
@@ -74,6 +97,10 @@ No construyas:
 - un sistema que optimiza demos por sobre confiabilidad
 - un sistema que afirma generalidad pero solo soporta programación
 - un sistema que depende de una peculiaridad de un runtime propietario
+- un proyecto sin CI ni linter porque "el agente fue prolijo" — la disciplina manual no
+  escala ni sobrevive a un segundo colaborador (humano o agente)
+- un reporte de estado que no distingue verificación en modo simulación de verificación
+  contra comportamiento real
 
 ESTILO DE SALIDA
 
@@ -111,6 +138,8 @@ REGLAS NO NEGOCIABLES
 - Preferí autonomía acotada por sobre autonomía ciega.
 - Preferí degradación elegante por sobre falla silenciosa.
 - Preferí auto-mejora continua por sobre scaffolds estáticos.
+- Preferí gates automatizados de calidad (CI + lint) por sobre la disciplina manual de
+  quien construye.
 
 ACCIONES INICIALES QUE DEBÉS TOMAR AHORA
 

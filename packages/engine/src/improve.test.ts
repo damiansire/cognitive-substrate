@@ -31,6 +31,12 @@ describe('proposeImprovement (simulation)', () => {
         expect(action).toContain('Crear x.txt');
         expect(action).toContain('archivo-existe:x.txt');
     });
+
+    it('never leaks the (task-id:...) bookkeeping annotation into the generated text', async () => {
+        const action = await proposeImprovement('- [ ] Crear x.txt (task-id:task-123)', failVerdict, 'log');
+        expect(action).toContain('Crear x.txt');
+        expect(action).not.toContain('task-id');
+    });
 });
 
 describe('self-improvement loop', () => {

@@ -1,0 +1,84 @@
+h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  margin: 0 0 20px;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+.queues {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+li {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.task-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: var(--text-dim);
+  text-underline-offset: 3px;
+}
+
+.task-link:hover {
+  text-decoration-style: solid;
+  text-decoration-color: currentColor;
+}
+
+.pending-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--danger);
+  background: var(--danger-bg);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pending-badge:hover {
+  text-decoration: underline;
+}
+
+.footer-link {
+  margin-top: 20px;
+}

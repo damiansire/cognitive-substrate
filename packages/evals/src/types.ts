@@ -6,12 +6,7 @@
  * - adversarial: does it resist prompt-injection / malicious inputs / sandbox escapes?
  * - long-horizon: can it carry multi-step work across ticks?
  */
-export type EvalCategory =
-    | 'capability'
-    | 'regression'
-    | 'behavioral'
-    | 'adversarial'
-    | 'long-horizon';
+export type EvalCategory = 'capability' | 'regression' | 'behavioral' | 'adversarial' | 'long-horizon';
 
 /** A fresh, isolated temp workspace handed to each case. */
 export interface EvalContext {

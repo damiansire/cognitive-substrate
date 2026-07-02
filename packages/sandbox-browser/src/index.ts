@@ -12,7 +12,10 @@ export const MAX_TEXT_BYTES = 20_000;
 const FETCH_TIMEOUT_MS = 15_000;
 
 /** Minimal fetch signature so tests can inject a fake without DOM/network. */
-export type FetchLike = (url: string, init?: { signal?: AbortSignal }) => Promise<{
+export type FetchLike = (
+    url: string,
+    init?: { signal?: AbortSignal }
+) => Promise<{
     ok: boolean;
     status: number;
     text(): Promise<string>;

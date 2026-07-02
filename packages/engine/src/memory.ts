@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { generateJson, hasApiKey } from '@cognitive-substrate/gemini-agent-loop';
+import { humanTaskText } from './tasks';
 import type { Verdict } from './types';
 
 const KNOWLEDGE_FILE = 'knowledge.md';
@@ -31,10 +32,11 @@ const SYSTEM_PROMPT = `Eres el módulo de memoria del Cognitive Substrate OS. De
  * still records *something* learned from every run (CHARTER: "learn one thing").
  */
 export async function distillLearning(task: string, verdict: Verdict, log: string): Promise<string> {
-    const fallback = `Tarea "${task.trim()}" ${verdict.verified ? 'verificada' : 'no verificada'}: ${verdict.reason}`;
+    const cleanTask = humanTaskText(task);
+    const fallback = `Tarea "${cleanTask}" ${verdict.verified ? 'verificada' : 'no verificada'}: ${verdict.reason}`;
     if (!hasApiKey()) return fallback;
 
-    const userPrompt = `Tarea: ${task}\nVeredicto: ${verdict.verified ? 'VERIFICADA' : 'NO VERIFICADA'} (${verdict.reason})\nLog:\n${log.slice(0, 4000)}\n\nDevolvé JSON {"lesson": "una línea"}.`;
+    const userPrompt = `Tarea: ${cleanTask}\nVeredicto: ${verdict.verified ? 'VERIFICADA' : 'NO VERIFICADA'} (${verdict.reason})\nLog:\n${log.slice(0, 4000)}\n\nDevolvé JSON {"lesson": "una línea"}.`;
     const result = await generateJson<{ lesson?: string }>(SYSTEM_PROMPT, userPrompt);
     return result?.lesson?.trim() || fallback;
 }

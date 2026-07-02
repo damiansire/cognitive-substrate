@@ -4,9 +4,10 @@ import * as os from 'os';
 import * as path from 'path';
 import { classifyCommand } from './classify';
 import { decideCommand, decideUrl, urlDomain } from './decide';
-import { defaultPolicy, loadPolicy } from './policy';
+import { defaultPolicy, loadPolicy, savePolicyAlwaysRule } from './policy';
 import { Budget } from './budget';
 import { appendAudit } from './audit';
+import { ApprovalStore } from './approvals';
 
 describe('classifyCommand', () => {
     it('flags destructive and exfiltration commands as dangerous', () => {
@@ -78,6 +79,22 @@ describe('loadPolicy', () => {
         fs.writeFileSync(path.join(dir, 'governance.json'), '{ not json');
         expect(loadPolicy(dir).mode).toBe('deny');
     });
+
+    it('reads department/displayName when present, omits them when absent', () => {
+        fs.writeFileSync(
+            path.join(dir, 'governance.json'),
+            JSON.stringify({ department: 'infra', displayName: 'Infraestructura' })
+        );
+        const p = loadPolicy(dir);
+        expect(p.department).toBe('infra');
+        expect(p.displayName).toBe('Infraestructura');
+        expect(loadPolicy(fs.mkdtempSync(path.join(os.tmpdir(), 'csos-gov-empty-'))).department).toBeUndefined();
+    });
+
+    it('ignores an empty/whitespace-only department instead of setting a blank one', () => {
+        fs.writeFileSync(path.join(dir, 'governance.json'), JSON.stringify({ department: '   ' }));
+        expect(loadPolicy(dir).department).toBeUndefined();
+    });
 });
 
 describe('Budget', () => {
@@ -90,6 +107,94 @@ describe('Budget', () => {
         expect(b.canCallTool()).toBe(true);
         b.recordTool();
         expect(b.canCallTool()).toBe(false);
+    });
+});
+
+describe('ApprovalStore + decideCommand defer mode', () => {
+    let dir: string;
+    beforeEach(() => {
+        dir = fs.mkdtempSync(path.join(os.tmpdir(), 'csos-appr-'));
+    });
+    afterEach(() => {
+        fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    const deferPolicy = { ...defaultPolicy, mode: 'defer' as const };
+
+    it('defers a dangerous command to a PendingApproval instead of denying it', () => {
+        const approvals = new ApprovalStore(dir);
+        const d = decideCommand('rm -rf build', deferPolicy, {
+            approvals,
+            workspace: 'demo',
+            task: '- [ ] borrar build'
+        });
+        expect(d.allowed).toBe(false);
+        expect(d.status).toBe('deferred');
+        expect(d.approvalId).toBeTruthy();
+
+        const pending = approvals.listPending();
+        expect(pending).toHaveLength(1);
+        expect(pending[0].command).toBe('rm -rf build');
+        expect(pending[0].status).toBe('pending');
+    });
+
+    it('is idempotent: retrying the same task+command reuses the pending entry', () => {
+        const approvals = new ApprovalStore(dir);
+        const first = decideCommand('rm -rf build', deferPolicy, { approvals, workspace: 'demo', task: 't1' });
+        const second = decideCommand('rm -rf build', deferPolicy, { approvals, workspace: 'demo', task: 't1' });
+        expect(second.approvalId).toBe(first.approvalId);
+        expect(approvals.listAll()).toHaveLength(1);
+    });
+
+    it('falls back to deny when mode is defer but no DeferContext is given (fail-safe)', () => {
+        const d = decideCommand('rm -rf build', deferPolicy);
+        expect(d.allowed).toBe(false);
+        expect(d.status).toBe('denied');
+    });
+
+    it('resolving approve+once allows exactly that command afterwards', () => {
+        const approvals = new ApprovalStore(dir);
+        const first = decideCommand('rm -rf build', deferPolicy, { approvals, workspace: 'demo', task: 't1' });
+        approvals.resolve(first.approvalId!, { action: 'approve', scope: 'once' });
+
+        const retry = decideCommand('rm -rf build', deferPolicy, { approvals, workspace: 'demo', task: 't1' });
+        expect(retry.allowed).toBe(true);
+        expect(retry.status).toBe('allowed');
+    });
+
+    it('resolving deny+once keeps the command blocked without creating a new pending entry', () => {
+        const approvals = new ApprovalStore(dir);
+        const first = decideCommand('rm -rf build', deferPolicy, { approvals, workspace: 'demo', task: 't1' });
+        approvals.resolve(first.approvalId!, { action: 'deny', scope: 'once' });
+
+        const retry = decideCommand('rm -rf build', deferPolicy, { approvals, workspace: 'demo', task: 't1' });
+        expect(retry.allowed).toBe(false);
+        expect(retry.status).toBe('denied');
+        expect(approvals.listPending()).toHaveLength(0);
+    });
+
+    it('resolving approve+always persists an allow rule so future ticks never defer again', () => {
+        const approvals = new ApprovalStore(dir);
+        const first = decideCommand('rm -rf build', deferPolicy, { approvals, workspace: 'demo', task: 't1' });
+        approvals.resolve(first.approvalId!, { action: 'approve', scope: 'always' });
+        savePolicyAlwaysRule(dir, 'allow', 'rm -rf build');
+
+        const policy = loadPolicy(dir);
+        expect(policy.allow).toContain('rm -rf build');
+
+        // A brand-new task with the same command is allowed by the persisted rule, no
+        // defer/pending entry needed at all.
+        const otherTask = decideCommand(
+            'rm -rf build',
+            { ...policy, mode: 'defer' },
+            {
+                approvals,
+                workspace: 'demo',
+                task: 'otra tarea'
+            }
+        );
+        expect(otherTask.allowed).toBe(true);
+        expect(otherTask.status).toBe('allowed');
     });
 });
 

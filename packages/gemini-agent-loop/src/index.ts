@@ -5,7 +5,16 @@ import { terminalTools } from '@cognitive-substrate/sandbox-terminal';
 import { containerTools } from '@cognitive-substrate/sandbox-container';
 import { browserTools, BrowserSession } from '@cognitive-substrate/sandbox-browser';
 import { discoverSkills, readSkillContent } from '@cognitive-substrate/skills-parser';
-import { type Policy, loadPolicy, decideCommand, decideUrl, appendAudit, Budget } from '@cognitive-substrate/governance';
+import {
+    type Policy,
+    loadPolicy,
+    decideCommand,
+    decideUrl,
+    appendAudit,
+    Budget,
+    ApprovalStore
+} from '@cognitive-substrate/governance';
+import * as path from 'path';
 
 import { recordLlmCall } from './metrics';
 
@@ -15,88 +24,132 @@ export { getLlmCalls, resetLlmCalls, recordLlmCall } from './metrics';
 const MAX_TOOL_ITERATIONS = 15;
 const MAX_BACKOFF_ATTEMPTS = 3;
 
+/** Result of a dispatched tool call: the text to feed back to the model, plus an
+ * optional signal that the whole task must pause for human approval right now. */
+export interface DispatchResult {
+    text: string;
+    awaitingApproval?: { approvalId: string; command: string };
+}
+
 /**
  * Dispatches a single tool call to its sandboxed implementation, applying governance:
  * the terminal goes through the approval gate, and every invocation is audited.
- * All tools are confined to `workspacePath`. Returns a human/model-readable string.
+ * All tools are confined to `workspacePath`. `task` identifies the current task line
+ * so a deferred command's `PendingApproval` can be matched back to it on retry.
+ *
+ * Exported (not just used internally) so the defer/approval wiring is testable without
+ * a real LLM call — `runCommand` is the only case that can pause the task.
  */
-async function dispatchTool(
+export async function dispatchTool(
     workspacePath: string,
     name: string | undefined,
     args: any,
     policy: Policy,
-    browser: BrowserSession
-): Promise<string> {
+    browser: BrowserSession,
+    task: string
+): Promise<DispatchResult> {
     switch (name) {
         case 'readFile':
             appendAudit(workspacePath, { tool: 'readFile', allowed: true, detail: args?.filepath });
-            return fsTools.readFile(workspacePath, args);
+            return { text: await fsTools.readFile(workspacePath, args) };
         case 'writeFile':
             appendAudit(workspacePath, { tool: 'writeFile', allowed: true, detail: args?.filepath });
-            return fsTools.writeFile(workspacePath, args);
+            return { text: await fsTools.writeFile(workspacePath, args) };
         case 'listFiles':
             appendAudit(workspacePath, { tool: 'listFiles', allowed: true, detail: args?.dirpath });
-            return fsTools.listFiles(workspacePath, args);
+            return { text: await fsTools.listFiles(workspacePath, args) };
         case 'runCommand': {
-            // Approval gate: dangerous commands are denied in autonomous mode.
-            const decision = decideCommand(args?.command ?? '', policy);
+            const command = args?.command ?? '';
+            // Approval gate: dangerous commands are denied (or deferred to a human) in
+            // autonomous mode.
+            const decision =
+                policy.mode === 'defer'
+                    ? decideCommand(command, policy, {
+                          approvals: new ApprovalStore(workspacePath),
+                          workspace: path.basename(workspacePath),
+                          task
+                      })
+                    : decideCommand(command, policy);
             appendAudit(workspacePath, {
                 tool: 'runCommand',
                 allowed: decision.allowed,
                 reason: decision.reason,
-                command: args?.command
+                command
             });
+            if (decision.status === 'deferred' && decision.approvalId) {
+                return {
+                    text: `En espera de aprobación humana (id: ${decision.approvalId}). La tarea queda pausada hasta que se resuelva.`,
+                    awaitingApproval: { approvalId: decision.approvalId, command }
+                };
+            }
             if (!decision.allowed) {
-                return `Bloqueado por governance: ${decision.reason}. Si era necesario, ajustá governance.json o pedí aprobación humana.`;
+                return {
+                    text: `Bloqueado por governance: ${decision.reason}. Si era necesario, ajustá governance.json o pedí aprobación humana.`
+                };
             }
             // Execution surface chosen by policy: isolated container or native host shell.
-            return policy.terminal === 'container'
-                ? containerTools.runCommand(workspacePath, args)
-                : terminalTools.runCommand(workspacePath, args);
+            return {
+                text:
+                    policy.terminal === 'container'
+                        ? await containerTools.runCommand(workspacePath, args)
+                        : await terminalTools.runCommand(workspacePath, args)
+            };
         }
         case 'fetchUrl': {
             // Egress gate: only domains in browserAllowDomains may be fetched (deny-all default).
             const url = args?.url ?? '';
             const urlDecision = decideUrl(url, policy);
-            appendAudit(workspacePath, { tool: 'fetchUrl', allowed: urlDecision.allowed, reason: urlDecision.reason, detail: url });
+            appendAudit(workspacePath, {
+                tool: 'fetchUrl',
+                allowed: urlDecision.allowed,
+                reason: urlDecision.reason,
+                detail: url
+            });
             if (!urlDecision.allowed) {
-                return `Bloqueado por governance: ${urlDecision.reason}. Agregá el dominio a browserAllowDomains en governance.json si corresponde.`;
+                return {
+                    text: `Bloqueado por governance: ${urlDecision.reason}. Agregá el dominio a browserAllowDomains en governance.json si corresponde.`
+                };
             }
-            return browserTools.fetchText(url);
+            return { text: await browserTools.fetchText(url) };
         }
         case 'browserNavigate': {
             const url = args?.url ?? '';
             const urlDecision = decideUrl(url, policy);
-            appendAudit(workspacePath, { tool: 'browserNavigate', allowed: urlDecision.allowed, reason: urlDecision.reason, detail: url });
+            appendAudit(workspacePath, {
+                tool: 'browserNavigate',
+                allowed: urlDecision.allowed,
+                reason: urlDecision.reason,
+                detail: url
+            });
             if (!urlDecision.allowed) {
-                return `Bloqueado por governance: ${urlDecision.reason}.`;
+                return { text: `Bloqueado por governance: ${urlDecision.reason}.` };
             }
-            return browser.navigate(url);
+            return { text: await browser.navigate(url) };
         }
         case 'browserReadText':
             appendAudit(workspacePath, { tool: 'browserReadText', allowed: true });
-            return browser.readText();
+            return { text: await browser.readText() };
         case 'browserClick':
             appendAudit(workspacePath, { tool: 'browserClick', allowed: true, detail: args?.selector });
-            return browser.click(args?.selector ?? '');
+            return { text: await browser.click(args?.selector ?? '') };
         case 'browserType':
             appendAudit(workspacePath, { tool: 'browserType', allowed: true, detail: args?.selector });
-            return browser.type(args?.selector ?? '', args?.text ?? '');
+            return { text: await browser.type(args?.selector ?? '', args?.text ?? '') };
         case 'browserScreenshot': {
             // Screenshot path must stay inside the workspace (same containment as fs tools).
             try {
                 const abs = resolveInsideWorkspace(workspacePath, args?.filepath ?? 'screenshot.png');
                 appendAudit(workspacePath, { tool: 'browserScreenshot', allowed: true, detail: args?.filepath });
-                return await browser.screenshot(abs);
+                return { text: await browser.screenshot(abs) };
             } catch (e: any) {
-                return `Error de Seguridad: ${e?.message ?? 'ruta inválida'}`;
+                return { text: `Error de Seguridad: ${e?.message ?? 'ruta inválida'}` };
             }
         }
         case 'readSkill':
             appendAudit(workspacePath, { tool: 'readSkill', allowed: true, detail: args?.path });
-            return readSkillContent(workspacePath, args?.path);
+            return { text: await readSkillContent(workspacePath, args?.path) };
         default:
-            return `Error: Herramienta desconocida ${name}`;
+            return { text: `Error: Herramienta desconocida ${name}` };
     }
 }
 
@@ -109,10 +162,14 @@ async function dispatchTool(
  * @param coreMemory - The immediate context/memory to inject into the system prompt.
  * @returns A promise resolving to an object containing success status and a detailed log.
  */
-export async function executeTaskWithLLM(workspacePath: string, task: string, coreMemory: string): Promise<{ success: boolean; log: string }> {
+export async function executeTaskWithLLM(
+    workspacePath: string,
+    task: string,
+    coreMemory: string
+): Promise<{ success: boolean; log: string; awaitingApproval?: { approvalId: string; command: string } }> {
     if (!process.env['GEMINI_API_KEY'] || process.env['GEMINI_API_KEY'].includes('tu_clave_aqui')) {
         console.warn(`>>> [LLM] GEMINI_API_KEY no válida. Simulación activada para ${workspacePath}`);
-        return { success: true, log: "Simulated success (No API Key)" };
+        return { success: true, log: 'Simulated success (No API Key)' };
     }
 
     const policy = loadPolicy(workspacePath);
@@ -177,7 +234,7 @@ Sigue estos pasos estrictamente:
 
     let nextMessage: PartListUnion = `Ejecuta la siguiente tarea:\n${task}`;
     let success = false;
-    let log = "";
+    let log = '';
     const browser = new BrowserSession();
 
     try {
@@ -203,11 +260,14 @@ Sigue estos pasos estrictamente:
                     const status = apiError.status || 500;
                     if (status === 429 || status === 503) {
                         if (attempts >= MAX_BACKOFF_ATTEMPTS) {
-                            return { success: false, log: log + `\nError Crítico: Falla de Red/Rate Limit persistente (${status}).` };
+                            return {
+                                success: false,
+                                log: log + `\nError Crítico: Falla de Red/Rate Limit persistente (${status}).`
+                            };
                         }
                         const waitTime = Math.pow(2, attempts) * 1000;
                         console.warn(`>>> [LLM] Rate Limit (${status}) detectado. Reintentando en ${waitTime}ms...`);
-                        await new Promise(resolve => setTimeout(resolve, waitTime));
+                        await new Promise((resolve) => setTimeout(resolve, waitTime));
                     } else {
                         throw apiError;
                     }
@@ -216,7 +276,7 @@ Sigue estos pasos estrictamente:
 
             if (!response) break;
 
-            log += `\n[Agent]: ${response.text || "Tool Call"}`;
+            log += `\n[Agent]: ${response.text || 'Tool Call'}`;
 
             const calls = response.functionCalls;
             if (calls && calls.length > 0) {
@@ -224,6 +284,8 @@ Sigue estos pasos estrictamente:
                 // text message). This is what the Gemini function-calling contract expects so
                 // the model can match each result to the call it made.
                 const toolResponseParts: Part[] = [];
+
+                let pausedForApproval: { approvalId: string; command: string } | undefined;
 
                 for (const call of calls) {
                     const args = call.args as any;
@@ -234,7 +296,9 @@ Sigue estos pasos estrictamente:
                         result = `Bloqueado por governance: budget de herramientas agotado (${budget.spentTools}/${policy.maxToolCallsPerTask}).`;
                     } else {
                         budget.recordTool();
-                        result = await dispatchTool(workspacePath, call.name, args, policy, browser);
+                        const dispatch = await dispatchTool(workspacePath, call.name, args, policy, browser, task);
+                        result = dispatch.text;
+                        if (dispatch.awaitingApproval) pausedForApproval = dispatch.awaitingApproval;
                     }
 
                     toolResponseParts.push({
@@ -244,6 +308,16 @@ Sigue estos pasos estrictamente:
                             response: { output: result }
                         }
                     });
+
+                    // A dangerous command was deferred to a human: stop dispatching further
+                    // calls this round and end the task here — it can't make progress until
+                    // the pending approval is resolved.
+                    if (pausedForApproval) break;
+                }
+
+                if (pausedForApproval) {
+                    log += `\n[Governance] Tarea pausada, esperando aprobación humana (id: ${pausedForApproval.approvalId}).`;
+                    return { success: false, log, awaitingApproval: pausedForApproval };
                 }
                 nextMessage = toolResponseParts;
             } else {
@@ -253,7 +327,7 @@ Sigue estos pasos estrictamente:
         }
         return { success, log };
     } catch (e: any) {
-        console.error(">>> [LLM Error]:", e);
+        console.error('>>> [LLM Error]:', e);
         return { success: false, log: `Excepción durante ejecución: ${e.message}` };
     } finally {
         await browser.close();

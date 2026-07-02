@@ -23,7 +23,13 @@ export function renderReportMarkdown(report: EvalReport): string {
         lines.push(`| ${cat} | ${s.passed} | ${s.total} |`);
     }
 
-    lines.push('', '## Casos', '', '| Estado | Caso | Categoría | ms | LLM | Detalle |', '| --- | --- | --- | --- | --- | --- |');
+    lines.push(
+        '',
+        '## Casos',
+        '',
+        '| Estado | Caso | Categoría | ms | LLM | Detalle |',
+        '| --- | --- | --- | --- | --- | --- |'
+    );
     for (const r of report.results) {
         const status = r.passed ? '✅' : '❌';
         const detail = (r.error ? `ERROR: ${r.error}` : r.detail).replace(/\|/g, '\\|');

@@ -33,6 +33,12 @@
     },
     {
       "path": "./apps/coordinator"
+    },
+    {
+      "path": "./apps/tui"
+    },
+    {
+      "path": "./apps/web-server"
     }
   ]
 }

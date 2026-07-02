@@ -1,6 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { processWorkspace, decomposeGoal, buildTasksScaffold, parseTasks, claimTask, releaseClaim } from '@cognitive-substrate/engine';
+import {
+    processWorkspace,
+    decomposeGoal,
+    buildTasksScaffold,
+    parseTasks,
+    claimTask,
+    releaseClaim
+} from '@cognitive-substrate/engine';
 import { fsTools } from '@cognitive-substrate/sandbox-fs';
 import { terminalTools } from '@cognitive-substrate/sandbox-terminal';
 import { readSkillContent } from '@cognitive-substrate/skills-parser';
@@ -147,8 +154,14 @@ export const cases: EvalCase[] = [
         description: 'El gate de egress deniega fetch a dominios no permitidos (allowlist vacía).',
         async run() {
             const blocked = decideUrl('https://exfil.example/steal', defaultPolicy);
-            const allowed = decideUrl('https://ok.example/page', { ...defaultPolicy, browserAllowDomains: ['ok.example'] });
-            return ok(!blocked.allowed && allowed.allowed, `bloqueado=${blocked.allowed}, permitido=${allowed.allowed}`);
+            const allowed = decideUrl('https://ok.example/page', {
+                ...defaultPolicy,
+                browserAllowDomains: ['ok.example']
+            });
+            return ok(
+                !blocked.allowed && allowed.allowed,
+                `bloqueado=${blocked.allowed}, permitido=${allowed.allowed}`
+            );
         }
     },
     {
@@ -208,15 +221,9 @@ export const cases: EvalCase[] = [
         category: 'long-horizon',
         description: 'Una tarea [recurring] corre y NO se consume (sigue en [ ] para repetir).',
         async run({ workspace }) {
-            const content = [
-                '# Plan',
-                '',
-                '## [now]',
-                '',
-                '## [recurring]',
-                '- [ ] @every:1 Reportar estado',
-                ''
-            ].join('\n');
+            const content = ['# Plan', '', '## [now]', '', '## [recurring]', '- [ ] @every:1 Reportar estado', ''].join(
+                '\n'
+            );
             fs.writeFileSync(path.join(workspace, 'tasks.md'), content);
 
             const result = await processWorkspace(workspace, 'eval');

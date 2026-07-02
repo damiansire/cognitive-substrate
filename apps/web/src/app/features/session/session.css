@@ -1,0 +1,122 @@
+h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  margin: 0 0 20px;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+.evidence-path {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin: 0 0 4px;
+}
+
+.task {
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.verdict svg {
+  width: 14px;
+  height: 14px;
+}
+
+.verdict.ok {
+  color: var(--success);
+  background: rgb(89 214 157 / 12%);
+}
+
+.verdict.fail {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.reason {
+  margin: 8px 0 20px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+section {
+  margin-bottom: 20px;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checks li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.checks .mark {
+  font-weight: 700;
+  width: 14px;
+}
+
+.checks li.ok .mark {
+  color: var(--success);
+}
+
+.checks li.fail .mark {
+  color: var(--danger);
+}
+
+.check-detail {
+  color: var(--text-dim);
+}
+
+.learning {
+  margin: 0;
+  font-size: 13px;
+}
+
+.log {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}

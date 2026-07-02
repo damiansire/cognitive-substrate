@@ -1,0 +1,82 @@
+h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  margin: 0 0 20px;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.skill-name {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Catalog, not a signal — de-emphasized relative to the improve queue / eval summary
+   above it (a design-review found the un-differentiated skills list dominating the
+   page over the actually-actionable sections). */
+.skills {
+  background: transparent;
+  border-style: dashed;
+}
+
+.skills ul {
+  font-size: 13px;
+  gap: 6px;
+}
+
+.eval-summary {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.note {
+  margin: 0;
+  font-size: 12px;
+}
+
+code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  background: var(--surface-raised);
+  padding: 1px 5px;
+  border-radius: 4px;
+}

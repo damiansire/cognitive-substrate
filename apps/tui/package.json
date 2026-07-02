@@ -1,0 +1,18 @@
+{
+  "name": "@cognitive-substrate/tui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "sideEffects": false,
+  "dependencies": {
+    "@cognitive-substrate/engine": "*",
+    "@cognitive-substrate/governance": "*",
+    "ink": "^7.1.0",
+    "react": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "ink-testing-library": "^4.0.0"
+  }
+}

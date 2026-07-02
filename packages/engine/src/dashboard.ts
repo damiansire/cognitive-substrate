@@ -39,9 +39,7 @@ export function renderDashboard(input: DashboardInput): string {
         lines.push('| --- | --- | --- | --- | --- |');
         for (const r of results) {
             const run = r.run;
-            const last = run
-                ? `${run.verdict.verified ? '✅' : '❌'} ${truncate(run.task, 50)}`
-                : '—';
+            const last = run ? `${run.verdict.verified ? '✅' : '❌'} ${truncate(run.task, 50)}` : '—';
             const evidence = run ? `\`${run.evidencePath}\`` : '—';
             lines.push(`| ${r.project} | ${r.pendingNow} | ${r.incidents} | ${last} | ${evidence} |`);
         }

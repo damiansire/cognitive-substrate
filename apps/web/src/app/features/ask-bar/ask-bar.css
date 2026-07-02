@@ -1,0 +1,73 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  max-width: 480px;
+}
+
+.ask-bar {
+  display: flex;
+  gap: 6px;
+}
+
+.ask-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.ask-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.ask-input:disabled {
+  opacity: 0.5;
+}
+
+.ask-submit {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.ask-submit:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.ask-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ask-result {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.ask-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--surface-raised);
+  margin-right: 6px;
+}
+
+.ask-error {
+  color: var(--danger);
+}

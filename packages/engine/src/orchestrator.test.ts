@@ -56,6 +56,9 @@ describe('processWorkspace — FIRST MILESTONE loop end-to-end (simulation)', ()
 
         // Human-readable summary produced.
         expect(result.summary).toContain('Verificado');
+
+        // The run's evidence carries the task-id embedded by intake, for drill-down.
+        expect(result.run!.taskId).toMatch(/^task-/);
     });
 
     it('records a failure (no [x]) and queues an improve task when verification fails', async () => {

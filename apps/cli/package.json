@@ -6,7 +6,8 @@
   },
   "dependencies": {
     "dotenv": "^17.4.2",
-    "@cognitive-substrate/engine": "*"
+    "@cognitive-substrate/engine": "*",
+    "@cognitive-substrate/governance": "*"
   },
   "scripts": {
     "build": "tsup src/index.ts --format cjs --target es2022 --clean --minify"

@@ -1,0 +1,71 @@
+.topbar {
+  display: flex;
+  /* flex-start, not center: the ask bar grows a second row (its result message)
+     below the input on submit — centering against that taller sibling would shove
+     the brand/nav down and off the input's baseline. flex-start keeps every child
+     pinned to the same top edge regardless of how tall the ask bar's result gets. */
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  padding: 14px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding-top: 6px;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 10 links across 3 conceptual altitudes (work / rollups / introspection) reads as one
+   undifferentiated row without this — a design-review flagged flat nav as reaching its
+   limit. A vertical rule between groups is cheap and buys room before an actual
+   menu/dropdown redesign is warranted. */
+.nav-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+.nav-group:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+nav a:hover {
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+nav a.active {
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}

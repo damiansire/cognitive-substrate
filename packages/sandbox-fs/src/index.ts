@@ -29,10 +29,7 @@ export function resolveInsideWorkspace(workspacePath: string, requestedPath: str
     const realTarget = realpathIfExists(target);
 
     const relative = path.relative(workspaceRoot, realTarget);
-    const escapes =
-        relative === '..' ||
-        relative.startsWith(`..${path.sep}`) ||
-        path.isAbsolute(relative);
+    const escapes = relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
 
     if (escapes) {
         throw new SandboxEscapeError(workspaceRoot, requestedPath);
@@ -43,9 +40,7 @@ export function resolveInsideWorkspace(workspacePath: string, requestedPath: str
 /** Error thrown when an agent attempts to access a path outside its workspace. */
 export class SandboxEscapeError extends Error {
     constructor(workspaceRoot: string, requestedPath: string) {
-        super(
-            `Error de Seguridad: Acceso denegado. La ruta "${requestedPath}" sale del workspace (${workspaceRoot}).`
-        );
+        super(`Error de Seguridad: Acceso denegado. La ruta "${requestedPath}" sale del workspace (${workspaceRoot}).`);
         this.name = 'SandboxEscapeError';
     }
 }

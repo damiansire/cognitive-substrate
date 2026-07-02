@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { referencedFiles, deterministicChecks, verifyTask, extractVerifyCommand, resolveVerifyCommand } from './verification';
+import {
+    referencedFiles,
+    deterministicChecks,
+    verifyTask,
+    extractVerifyCommand,
+    resolveVerifyCommand
+} from './verification';
 
 let workspace: string;
 let savedKey: string | undefined;
@@ -86,23 +92,13 @@ describe('resolveVerifyCommand', () => {
 
 describe('verifyTask — behavioral check (regression-safe)', () => {
     it('verifies when the @verify: command exits 0', async () => {
-        const verdict = await verifyTask(
-            workspace,
-            `Tarea @verify: node -e "process.exit(0)"`,
-            'hice la tarea',
-            true
-        );
+        const verdict = await verifyTask(workspace, `Tarea @verify: node -e "process.exit(0)"`, 'hice la tarea', true);
         expect(verdict.verified).toBe(true);
         expect(verdict.checks.find((c) => c.name === 'verificacion-real')?.passed).toBe(true);
     });
 
     it('does NOT verify when the @verify: command exits non-zero, even with evidence otherwise present', async () => {
-        const verdict = await verifyTask(
-            workspace,
-            `Tarea @verify: node -e "process.exit(1)"`,
-            'hice la tarea',
-            true
-        );
+        const verdict = await verifyTask(workspace, `Tarea @verify: node -e "process.exit(1)"`, 'hice la tarea', true);
         expect(verdict.verified).toBe(false);
         expect(verdict.checks.find((c) => c.name === 'verificacion-real')?.passed).toBe(false);
     });
