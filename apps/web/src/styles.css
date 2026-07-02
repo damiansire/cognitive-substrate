@@ -41,6 +41,14 @@ a {
   color: var(--accent);
 }
 
+/* WCAG 2.4.7 — a visible keyboard focus indicator on every interactive element. Some
+   component styles set `outline: none` with only a border-color change (invisible to
+   keyboard users); this restores a consistent, high-contrast ring on :focus-visible. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 button {
   font-family: inherit;
   font-size: inherit;

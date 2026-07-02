@@ -23,8 +23,13 @@
 }
 
 .ask-input:focus {
-  outline: none;
   border-color: var(--accent);
+}
+/* Keep a visible ring for keyboard users (WCAG 2.4.7); pointer focus just shifts the
+   border. */
+.ask-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .ask-input:disabled {

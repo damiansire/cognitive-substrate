@@ -29,3 +29,13 @@ jobs:
 
             - name: Test
               run: npm test
+
+            # apps/web (Angular) tiene su propio build/test fuera del grafo tsc del root.
+            # Se cablea acá para que el dashboard no quede sin gate — incluye el gate de
+            # accesibilidad axe (app.a11y.spec.ts), que enforce el AXE/WCAG-AA que el
+            # propio apps/web/.claude/CLAUDE.md declara como requisito duro.
+            - name: apps/web — build
+              run: npm run build --workspace @cognitive-substrate/web
+
+            - name: apps/web — test (incluye gate de accesibilidad axe)
+              run: npm test --workspace @cognitive-substrate/web -- --watch=false

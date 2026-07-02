@@ -9,10 +9,11 @@ import { AskBar } from './features/ask-bar/ask-bar';
   selector: 'csos-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, AskBar],
   template: `
+    <a class="skip-link" href="#main-content">Saltar al contenido</a>
     <header class="topbar">
       <span class="brand">Cognitive Substrate OS</span>
-      <nav>
-        <span class="nav-group">
+      <nav aria-label="Navegación principal">
+        <span class="nav-group" role="group" aria-label="Operación">
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
             >Home</a
           >
@@ -20,12 +21,12 @@ import { AskBar } from './features/ask-bar/ask-bar';
           <a routerLink="/board" routerLinkActive="active">Board</a>
           <a routerLink="/session" routerLinkActive="active">Sesión</a>
         </span>
-        <span class="nav-group">
+        <span class="nav-group" role="group" aria-label="Negocio">
           <a routerLink="/project" routerLinkActive="active">Proyecto</a>
           <a routerLink="/departments" routerLinkActive="active">Empresa</a>
           <a routerLink="/portfolio" routerLinkActive="active">Portfolio</a>
         </span>
-        <span class="nav-group">
+        <span class="nav-group" role="group" aria-label="Introspección">
           <a routerLink="/artifacts" routerLinkActive="active">Artefactos</a>
           <a routerLink="/environment" routerLinkActive="active">Entorno</a>
           <a routerLink="/learning" routerLinkActive="active">Aprendizaje</a>
@@ -33,7 +34,7 @@ import { AskBar } from './features/ask-bar/ask-bar';
       </nav>
       <csos-ask-bar />
     </header>
-    <main>
+    <main id="main-content">
       <router-outlet />
     </main>
   `,

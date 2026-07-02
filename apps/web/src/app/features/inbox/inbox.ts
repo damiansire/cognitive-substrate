@@ -32,6 +32,7 @@ import type { InboxItem, ResolveAction, ResolveScope } from '../../api/models';
             @if (item.kind === 'approval') {
               <div class="row">
                 <svg
+                  aria-hidden="true"
                   class="icon"
                   viewBox="0 0 24 24"
                   fill="none"
@@ -53,6 +54,7 @@ import type { InboxItem, ResolveAction, ResolveScope } from '../../api/models';
                     <div class="actions">
                       <input
                         class="modify-input mono"
+                        aria-label="Comando modificado"
                         [value]="modifyText()"
                         (input)="onModifyInput($event)"
                         placeholder="Comando modificado…"
@@ -121,6 +123,7 @@ import type { InboxItem, ResolveAction, ResolveScope } from '../../api/models';
             } @else if (item.incident.severity === 'error') {
               <div class="row">
                 <svg
+                  aria-hidden="true"
                   class="icon"
                   viewBox="0 0 24 24"
                   fill="none"
@@ -141,6 +144,7 @@ import type { InboxItem, ResolveAction, ResolveScope } from '../../api/models';
             } @else {
               <div class="row">
                 <svg
+                  aria-hidden="true"
                   class="icon"
                   viewBox="0 0 24 24"
                   fill="none"

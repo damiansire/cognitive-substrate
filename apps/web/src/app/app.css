@@ -1,3 +1,19 @@
+/* Skip-link: off-screen until focused, then pinned top-left so keyboard users can jump
+   straight to <main> past the topbar/nav. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0 0 6px 0;
+}
+.skip-link:focus {
+  left: 0;
+}
+
 .topbar {
   display: flex;
   /* flex-start, not center: the ask bar grows a second row (its result message)

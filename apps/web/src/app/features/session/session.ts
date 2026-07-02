@@ -37,6 +37,7 @@ import { parseTaskLine, normalizePath } from '../../shared/format';
           >
             @if (run.verdict.verified) {
               <svg
+                aria-hidden="true"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -49,6 +50,7 @@ import { parseTaskLine, normalizePath } from '../../shared/format';
               <span>Verificado</span>
             } @else {
               <svg
+                aria-hidden="true"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"

@@ -59,6 +59,7 @@ import { parseTaskLine } from '../../shared/format';
             >
               @if (run.verdict.verified) {
                 <svg
+                  aria-hidden="true"
                   class="run-icon"
                   viewBox="0 0 24 24"
                   fill="none"
@@ -71,6 +72,7 @@ import { parseTaskLine } from '../../shared/format';
                 </svg>
               } @else {
                 <svg
+                  aria-hidden="true"
                   class="run-icon"
                   viewBox="0 0 24 24"
                   fill="none"

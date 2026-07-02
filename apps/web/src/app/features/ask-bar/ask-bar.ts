@@ -25,10 +25,11 @@ const MODE_LABELS: Record<AskMode, string> = {
 @Component({
   selector: 'csos-ask-bar',
   template: `
-    <form class="ask-bar" (submit)="onSubmit($event)">
+    <form class="ask-bar" role="search" aria-label="Pedile algo al OS" (submit)="onSubmit($event)">
       <input
         class="ask-input mono"
         type="text"
+        aria-label="Pedile algo al OS"
         [value]="text()"
         (input)="onInput($event)"
         [placeholder]="project() ? 'Pedile algo al OS…' : 'Elegí un workspace desde Home primero'"
@@ -44,13 +45,15 @@ const MODE_LABELS: Record<AskMode, string> = {
     </form>
 
     @if (result(); as r) {
-      <p class="ask-result">
+      <p class="ask-result" role="status" aria-live="polite">
         <span class="ask-tag">{{ modeLabel(r.interpretation.mode) }}</span>
         {{ r.message }}
       </p>
     }
     @if (error()) {
-      <p class="ask-result ask-error">No se pudo interpretar el pedido — intentá de nuevo.</p>
+      <p class="ask-result ask-error" role="alert">
+        No se pudo interpretar el pedido — intentá de nuevo.
+      </p>
     }
   `,
   styleUrl: './ask-bar.css',
