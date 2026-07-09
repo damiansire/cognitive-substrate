@@ -1,0 +1,35 @@
+name: Link Check
+
+# Valida que los links y badges del README (y demás docs .md) no estén rotos.
+# Corre en cada push/PR a main/master y una vez por semana para cazar link-rot
+# de recursos externos que se pudre sin que toquemos el repo.
+on:
+    push:
+        branches: [master, main]
+    pull_request:
+    schedule:
+        - cron: "0 6 * * 1" # lunes 06:00 UTC
+
+permissions:
+    contents: read
+
+jobs:
+    links:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Check links in README and docs
+              uses: lycheeverse/lychee-action@v2
+              with:
+                  # README + todo docs/*.md. Aceptamos 403/429 porque sitios grandes
+                  # (openai.com, etc.) bloquean bots con esos códigos aunque el link
+                  # sea válido — evita falsos positivos sin apagar el chequeo real.
+                  args: >-
+                      --no-progress
+                      --verbose
+                      --accept 200,206,403,429
+                      --exclude-loopback
+                      README.md
+                      'docs/**/*.md'
+                  fail: true

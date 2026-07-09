@@ -1,5 +1,8 @@
 # Cognitive Substrate OS
 
+[![CI](https://github.com/damiansire/cognitive-substrate-os/actions/workflows/ci.yml/badge.svg)](https://github.com/damiansire/cognitive-substrate-os/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A lightweight, local, **filesystem-first agentic task runner** built in TypeScript and
 powered by Google Gemini. You give a workspace a goal; the engine decomposes it into
 tasks, executes each one with a sandboxed tool-calling agent, **verifies the result and
@@ -101,7 +104,7 @@ concrete pending items.
 
 ### 2. Installation
 ```bash
-git clone https://github.com/yourusername/cognitive-substrate-os.git
+git clone https://github.com/damiansire/cognitive-substrate-os.git
 cd cognitive-substrate-os
 npm install
 npm run build
