@@ -40,7 +40,9 @@ the OS holds is a file on your disk.
   long-horizon categories with pass@1, time-to-pass and cost-to-pass metrics; runs
   offline and gates CI.
 - ✅ **Self-improvement loop** — the `[improve]` queue is drained when `[now]` is empty;
-  each failure proposes one concrete improvement, and the loop converges.
+  each failure proposes one concrete improvement, and the loop converges. A real,
+  versioned run of the eval harness backs this claim: see [`evals-report/`](evals-report/)
+  (checked into git, regenerated with `npm run eval`) instead of taking it on faith.
 - ✅ **Governance** — per-task budgets, an approval gate that denies dangerous commands
   in autonomous mode, and an append-only `audit.log`.
 - ✅ **Observability & recurring** — structured `incidents.jsonl`, incident counts on the
@@ -61,7 +63,21 @@ the OS holds is a file on your disk.
   runs/incidents/approvals — never mocked, with honest empty states where no real business
   data exists yet.
 - 🟡 **Strong sandbox** — opt-in container execution (`"terminal":"container"`); runs
-  shell commands inside an isolated Docker container, fail-safe if Docker is absent.
+  shell commands inside an isolated Docker container, fail-safe if Docker is absent. As
+  a Docker-independent complement, a `runJs` tool runs JS snippets inside a real
+  QuickJS-in-WebAssembly sandbox (`@cognitive-substrate/sandbox-wasm`) — genuine
+  memory-safe isolation (no ambient `require`/`process`/`fs`/network), CPU/time bounded
+  by a WASM interrupt handler, heap bounded by `setMemoryLimit`. It covers JS-snippet
+  execution only, not arbitrary shell commands — see
+  [`docs/threat-model.md`](docs/threat-model.md) for exactly what's covered vs. still a
+  gap.
+- 🟡 **Multi-provider LLM abstraction** — `@cognitive-substrate/llm-provider` defines a
+  vendor-neutral `LlmProvider` contract; `LLM_PROVIDER=openai` switches the agent loop
+  to an OpenAI adapter (tool-schema translation, stateless-history bookkeeping) instead
+  of the default Gemini one. The OpenAI adapter is implemented and tested against an
+  injected fake client — **not yet verified against the real OpenAI API** (no
+  `OPENAI_API_KEY` was available when this was built). Default behavior (no env var
+  set) is unchanged: Gemini, exactly as before.
 - 🟡 **Browser domain** — egress-gated web access. Stateless `fetchUrl` reads a page's
   text; the agent also has an interactive session (`browserNavigate`/`browserReadText`/
   `browserClick`/`browserType`/`browserScreenshot`) that drives a real headless browser

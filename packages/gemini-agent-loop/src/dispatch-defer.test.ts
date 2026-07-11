@@ -91,3 +91,38 @@ describe('dispatchTool — runCommand defer wiring', () => {
         expect(result.text).not.toContain('Bloqueado por governance');
     });
 });
+
+describe('dispatchTool — runJs (real WASM sandbox, no governance gate needed)', () => {
+    let workspace: string;
+    beforeEach(() => {
+        workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'csos-dispatch-wasm-'));
+    });
+    afterEach(() => {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    });
+
+    it('evaluates real JS in the isolated QuickJS-WASM runtime and returns the result', async () => {
+        const result = await dispatchTool(
+            workspace,
+            'runJs',
+            { code: '21 * 2' },
+            defaultPolicy,
+            new BrowserSession(),
+            '- [ ] calcular'
+        );
+        expect(result.awaitingApproval).toBeUndefined();
+        expect(result.text).toBe('42');
+    });
+
+    it('has no ambient access to the host — even a "malicious" attempt to touch fs/process finds nothing', async () => {
+        const result = await dispatchTool(
+            workspace,
+            'runJs',
+            { code: 'typeof require + "," + typeof process + "," + typeof fetch' },
+            defaultPolicy,
+            new BrowserSession(),
+            '- [ ] intento malicioso'
+        );
+        expect(result.text).toBe('undefined,undefined,undefined');
+    });
+});

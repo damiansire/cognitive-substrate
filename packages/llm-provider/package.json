@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "name": "@cognitive-substrate/llm-provider",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "commonjs",
+  "sideEffects": false,
+  "dependencies": {
+    "@google/genai": "^2.10.0",
+    "openai": "^6.46.0"
+  }
+}

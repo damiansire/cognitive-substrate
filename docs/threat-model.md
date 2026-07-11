@@ -66,21 +66,56 @@ en git, no solo documentados):
   cambiar `claims.ts`, solo probarlo con concurrencia real. **(cso-adn-1,
   cerrado)**
 
+## Aislamiento real: contenedor (Docker) y WASM — estado real (cso-adn-2a)
+
+Esta máquina de auditoría NO tiene Docker instalado (`docker --version` falla) ni
+`wasmtime` como binario. Eso definió el alcance real logrado:
+
+- **Contenedor (Docker)**: `packages/sandbox-container` ya existía antes de esta
+  sesión (commit `28e6216`, "Layer 1 Foundation") — `containerTools.runCommand` corre
+  el comando dentro de `docker run --rm --network none ...`, fail-safe si Docker no
+  está disponible (nunca cae a shell nativo). Está WIRED en el loop real
+  (`gemini-agent-loop/src/index.ts`, `policy.terminal === 'container'`), no es código
+  muerto. Tiene tests reales de `buildDockerArgs` (puro) y del fail-safe (con
+  `checkDocker` inyectado como `false`), pero **nunca se verificó end-to-end contra un
+  daemon Docker real** porque no hay Docker en esta máquina — sigue siendo una brecha
+  real, no cerrada por esta sesión.
+- **WASM (nuevo en esta sesión)**: `packages/sandbox-wasm` — un tool `runJs` que
+  evalúa JavaScript dentro de un intérprete QuickJS compilado a WebAssembly
+  (`quickjs-emscripten`), sin depender de Docker. Es una primitiva de aislamiento REAL
+  del runtime (memoria lineal WASM separada), no validación manual en TypeScript: el
+  guest no tiene `require`/`process`/`fs`/`fetch` — esas capacidades simplemente no
+  existen ahí, no están "bloqueadas" por una regla. CPU/tiempo acotado por un interrupt
+  handler evaluado por el runtime; heap acotado por `setMemoryLimit`. **Verificado
+  real, no mockeado**, en esta misma máquina (`packages/sandbox-wasm/src/index.test.ts`
+  y `packages/gemini-agent-loop/src/dispatch-defer.test.ts`): ejecución normal,
+  ausencia real de globals de Node, loop infinito abortado por el interrupt handler
+  dentro del timeout, crecimiento de memoria detenido por el límite real de heap, y que
+  un guest que crashea no corrompe una corrida independiente siguiente. Wired como
+  tool `runJs` en el loop del agente, sin gate de governance (la capacidad que el gate
+  denegaría directamente no existe en el guest).
+
+**Alcance real vs. pendiente**: cubre UN caso de uso concreto — ejecución de snippets
+de JS — no reemplaza el sandboxing de comandos de shell arbitrarios (`runCommand`
+sigue siendo TypeScript manual en modo `native`, o Docker en modo `container`, sin
+verificación real de Docker en esta máquina). Migrar la ejecución de shell arbitrario
+a una primitiva WASM real (ej. un WASI-based coreutils/busybox) es trabajo
+sustancialmente mayor y queda fuera del alcance de esta sesión.
+
 ## Vectores de ataque NO cubiertos todavía (gap real, no hipotético)
 
-- **Límites de memoria** (a diferencia del tiempo de ejecución, que ya está
-  cubierto arriba): `sandbox-terminal` no impone ningún límite de memoria
-  al proceso que ejecuta — un comando que asigna memoria sin límite (pero
-  sin loopear indefinidamente en CPU, evitando así el timeout) no está
-  contenido hoy. Requeriría un límite a nivel OS (cgroups/Job Object con
-  límite de memoria, o contenedor) — el timeout por sí solo no lo cubre.
-- **Aislamiento real (contenedor/WASM)**: el sandboxing hoy es manual en
-  TypeScript (validación de paths, allowlists), no una primitiva de
-  aislamiento del sistema operativo (contenedor de un solo uso, runtime WASM
-  con límites de memoria/CPU impuestos por diseño). Los tests de arriba
-  confirman que la lógica de validación funciona para los casos que cubre,
-  pero no hay una segunda capa de aislamiento si esa lógica tiene un bug no
-  cubierto por un test. **(cso-adn-2a, trabajo de días, Fase 4)**
+- **Límites de memoria en `sandbox-terminal`** (a diferencia del tiempo de ejecución,
+  que ya está cubierto arriba): el shell nativo (`runCommand` en modo `native`) no
+  impone ningún límite de memoria al proceso que ejecuta — un comando que asigna
+  memoria sin límite (pero sin loopear indefinidamente en CPU, evitando así el
+  timeout) no está contenido hoy. Requeriría un límite a nivel OS (cgroups/Job Object
+  con límite de memoria) o el modo `container`/WASM (ver arriba, donde SÍ hay límites
+  de memoria reales — el `runJs` de `sandbox-wasm` los impone; `sandbox-container`
+  también podría vía `docker run --memory`, pendiente de cablear).
+- **Aislamiento real de comandos de shell arbitrarios sin Docker**: si Docker no está
+  disponible (como en esta máquina), el único execution surface para comandos de
+  shell es `native` (TypeScript manual, no una primitiva del SO). El nuevo `runJs`
+  WASM cubre snippets de JS, no comandos de shell — ver la sección de arriba.
 
 ## Cómo se actualiza este documento
 

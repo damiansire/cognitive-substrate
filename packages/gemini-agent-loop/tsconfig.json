@@ -18,6 +18,12 @@
       "path": "../sandbox-container"
     },
     {
+      "path": "../sandbox-wasm"
+    },
+    {
+      "path": "../llm-provider"
+    },
+    {
       "path": "../sandbox-browser"
     },
     {

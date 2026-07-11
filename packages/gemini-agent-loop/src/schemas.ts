@@ -105,6 +105,20 @@ export const toolDeclarations = [
         }
     },
     {
+        name: 'runJs',
+        description:
+            'Ejecuta un snippet de JavaScript en un intérprete QuickJS aislado (WASM), sin acceso ' +
+            'al filesystem, red ni proceso del host. Útil para cálculos o transformaciones de datos ' +
+            'puntuales; NO reemplaza runCommand (ese ejecuta comandos de shell).',
+        parameters: {
+            type: 'OBJECT',
+            properties: {
+                code: { type: 'STRING', description: 'El código JavaScript a evaluar.' }
+            },
+            required: ['code']
+        }
+    },
+    {
         name: 'readSkill',
         description: 'Lee las instrucciones completas de una Skill (habilidad) disponible.',
         parameters: {

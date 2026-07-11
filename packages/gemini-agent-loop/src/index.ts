@@ -1,8 +1,10 @@
-import { GoogleGenAI, type Part, type PartListUnion } from '@google/genai';
+import type { Part, PartListUnion } from '@google/genai';
 import { toolDeclarations } from './schemas';
+import { selectProvider, type ChatTurn, type LlmProvider } from '@cognitive-substrate/llm-provider';
 import { fsTools, resolveInsideWorkspace } from '@cognitive-substrate/sandbox-fs';
 import { terminalTools } from '@cognitive-substrate/sandbox-terminal';
 import { containerTools } from '@cognitive-substrate/sandbox-container';
+import { wasmTools } from '@cognitive-substrate/sandbox-wasm';
 import { browserTools, BrowserSession } from '@cognitive-substrate/sandbox-browser';
 import { discoverSkills, readSkillContent } from '@cognitive-substrate/skills-parser';
 import {
@@ -51,6 +53,50 @@ export interface ChatLike {
 export interface ExecuteDeps {
     createChat?: (systemInstruction: string) => ChatLike;
     sleep?: (ms: number) => Promise<void>;
+}
+
+/**
+ * Translates this loop's Gemini-shaped `PartListUnion` message into the vendor-neutral
+ * `ChatTurn` that `@cognitive-substrate/llm-provider` providers consume. Kept local
+ * (not exported) so `ChatLike`/`ExecuteDeps` — and every test that already constructs a
+ * fake `ChatLike` against the Gemini shape — stay untouched; only the DEFAULT provider
+ * wiring below goes through this translation.
+ */
+function partListToChatTurn(message: PartListUnion): ChatTurn {
+    if (typeof message === 'string') return { kind: 'text', text: message };
+    const parts = Array.isArray(message) ? message : [message];
+    const functionResponses = parts.filter((p): p is Part & { functionResponse: NonNullable<Part['functionResponse']> } =>
+        typeof p === 'object' && p !== null && 'functionResponse' in p && p.functionResponse !== undefined
+    );
+    if (functionResponses.length > 0) {
+        return {
+            kind: 'toolResults',
+            results: functionResponses.map((p) => ({
+                callId: p.functionResponse.id,
+                name: p.functionResponse.name,
+                output: String((p.functionResponse.response as { output?: unknown } | undefined)?.output ?? '')
+            }))
+        };
+    }
+    // Fallback: a plain-text Part array (not expected on the hot path today, but keeps
+    // this total rather than silently dropping content).
+    const text = parts
+        .map((p) => (typeof p === 'object' && p !== null && 'text' in p ? String((p as { text?: unknown }).text ?? '') : ''))
+        .join('');
+    return { kind: 'text', text };
+}
+
+/** Adapts a vendor-neutral `LlmProvider` chat session to this loop's local `ChatLike`
+ * contract, so the DEFAULT (non-test-injected) path can run against ANY provider
+ * (`LLM_PROVIDER=openai` or the default Gemini) while every existing test — which
+ * injects its own `ChatLike` fake directly — is completely unaffected. */
+function providerChatAdapter(provider: LlmProvider, systemInstruction: string): ChatLike {
+    const chat = provider.createChat(systemInstruction, toolDeclarations as any);
+    return {
+        async sendMessage({ message }: { message: PartListUnion }): Promise<AgentResponse> {
+            return chat.sendMessage(partListToChatTurn(message));
+        }
+    };
 }
 
 /** Result of a dispatched tool call: the text to feed back to the model, plus an
@@ -174,6 +220,12 @@ export async function dispatchTool(
                 return { text: `Error de Seguridad: ${e?.message ?? 'ruta inválida'}` };
             }
         }
+        case 'runJs':
+            // Real WASM isolation (QuickJS-in-WebAssembly): no ambient fs/network/process
+            // access exists in the guest, so no governance gate is needed here the way
+            // runCommand needs one — the capability the gate would deny simply isn't present.
+            appendAudit(workspacePath, { tool: 'runJs', allowed: true });
+            return { text: await wasmTools.runJs(args) };
         case 'readSkill':
             appendAudit(workspacePath, { tool: 'readSkill', allowed: true, detail: args?.path });
             return { text: await readSkillContent(workspacePath, args?.path) };
@@ -197,11 +249,15 @@ export async function executeTaskWithLLM(
     coreMemory: string,
     deps: ExecuteDeps = {}
 ): Promise<{ success: boolean; log: string; awaitingApproval?: { approvalId: string; command: string } }> {
-    // Simulation mode: only when NO chat factory is injected AND there's no usable key.
-    // An injected `createChat` (tests) always runs the real loop.
-    const keyMissing = !process.env['GEMINI_API_KEY'] || process.env['GEMINI_API_KEY'].includes('tu_clave_aqui');
-    if (!deps.createChat && keyMissing) {
-        console.warn(`>>> [LLM] GEMINI_API_KEY no válida. Simulación activada para ${workspacePath}`);
+    // Provider selection: LLM_PROVIDER=openai opts into the OpenAI adapter, anything
+    // else (including unset) keeps the original Gemini behavior — see
+    // @cognitive-substrate/llm-provider#selectProvider.
+    const provider = selectProvider();
+
+    // Simulation mode: only when NO chat factory is injected AND the selected provider
+    // has no usable key. An injected `createChat` (tests) always runs the real loop.
+    if (!deps.createChat && !provider.hasApiKey()) {
+        console.warn(`>>> [LLM] ${provider.name}: sin API key válida. Simulación activada para ${workspacePath}`);
         return { success: true, log: 'Simulated success (No API Key)' };
     }
 
@@ -251,19 +307,7 @@ Sigue estos pasos estrictamente:
 
     console.log(`>>> [LLM] Delegando tarea en workspace ${workspacePath}: ${task}`);
 
-    const createChat =
-        deps.createChat ??
-        ((sys: string): ChatLike => {
-            const ai = new GoogleGenAI({ apiKey: process.env['GEMINI_API_KEY'] });
-            return ai.chats.create({
-                model: 'gemini-2.5-flash',
-                config: {
-                    systemInstruction: sys,
-                    tools: [{ functionDeclarations: toolDeclarations as any }],
-                    temperature: 0.2
-                }
-            }) as unknown as ChatLike;
-        });
+    const createChat = deps.createChat ?? ((sys: string): ChatLike => providerChatAdapter(provider, sys));
 
     let chat: ChatLike;
     try {

@@ -11,6 +11,8 @@
     "@cognitive-substrate/sandbox-fs": "*",
     "@cognitive-substrate/sandbox-terminal": "*",
     "@cognitive-substrate/sandbox-container": "*",
+    "@cognitive-substrate/sandbox-wasm": "*",
+    "@cognitive-substrate/llm-provider": "*",
     "@cognitive-substrate/sandbox-browser": "*",
     "@cognitive-substrate/skills-parser": "*",
     "@cognitive-substrate/governance": "*"
