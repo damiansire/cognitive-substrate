@@ -115,7 +115,10 @@ export async function runJs(code: string, opts: WasmJsOptions = {}): Promise<Was
         // setMemoryLimit / setMaxStackSize violations surface as thrown WASM errors,
         // not as an evalCode error result — catch them here so callers always get a
         // structured result instead of an unhandled rejection.
-        return { ok: false, output: `Error: límite de memoria/stack excedido en el sandbox WASM (${e?.message ?? e}).` };
+        return {
+            ok: false,
+            output: `Error: límite de memoria/stack excedido en el sandbox WASM (${e?.message ?? e}).`
+        };
     } finally {
         vm.dispose();
         runtime.dispose();

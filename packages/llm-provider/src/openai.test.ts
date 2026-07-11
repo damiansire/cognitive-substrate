@@ -186,7 +186,9 @@ describe('OpenAiChat (via OpenAiProvider.createChat, injected fake client)', () 
                     message: {
                         role: 'assistant',
                         content: null,
-                        tool_calls: [{ id: 'call_x', type: 'function', function: { name: 'readFile', arguments: '{not json' } }]
+                        tool_calls: [
+                            { id: 'call_x', type: 'function', function: { name: 'readFile', arguments: '{not json' } }
+                        ]
                     }
                 }
             ]

@@ -12,10 +12,18 @@ import * as path from 'path';
  * mocks ONLY the LLM call boundary — a genuinely external, paid, non-deterministic
  * dependency — to prove the orchestrator's glue around it (queue mutation, WorkspaceResult
  * shape, skipping verify/incident) is wired correctly end-to-end.
+ *
+ * `hasApiKey` is also stubbed to `false`: `verification.ts` calls the real
+ * `generateJson` (a SEPARATE LLM call from `executeTaskWithLLM`) to model-verify the
+ * "success" branch, guarded by `if (!hasApiKey())`. On a machine with a real
+ * GOOGLE_API_KEY/GEMINI_API_KEY set (this one, for the multi-provider work), that
+ * guard was false and the test made a real paid call — which failed with a 429
+ * RESOURCE_EXHAUSTED once the account's spend cap was hit. Forcing the offline path
+ * here keeps this test deterministic regardless of what's in the environment.
  */
 vi.mock('@cognitive-substrate/gemini-agent-loop', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@cognitive-substrate/gemini-agent-loop')>();
-    return { ...actual, executeTaskWithLLM: vi.fn() };
+    return { ...actual, executeTaskWithLLM: vi.fn(), hasApiKey: () => false };
 });
 
 import { executeTaskWithLLM } from '@cognitive-substrate/gemini-agent-loop';

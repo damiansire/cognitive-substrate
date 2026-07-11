@@ -65,8 +65,9 @@ export interface ExecuteDeps {
 function partListToChatTurn(message: PartListUnion): ChatTurn {
     if (typeof message === 'string') return { kind: 'text', text: message };
     const parts = Array.isArray(message) ? message : [message];
-    const functionResponses = parts.filter((p): p is Part & { functionResponse: NonNullable<Part['functionResponse']> } =>
-        typeof p === 'object' && p !== null && 'functionResponse' in p && p.functionResponse !== undefined
+    const functionResponses = parts.filter(
+        (p): p is Part & { functionResponse: NonNullable<Part['functionResponse']> } =>
+            typeof p === 'object' && p !== null && 'functionResponse' in p && p.functionResponse !== undefined
     );
     if (functionResponses.length > 0) {
         return {
@@ -81,7 +82,9 @@ function partListToChatTurn(message: PartListUnion): ChatTurn {
     // Fallback: a plain-text Part array (not expected on the hot path today, but keeps
     // this total rather than silently dropping content).
     const text = parts
-        .map((p) => (typeof p === 'object' && p !== null && 'text' in p ? String((p as { text?: unknown }).text ?? '') : ''))
+        .map((p) =>
+            typeof p === 'object' && p !== null && 'text' in p ? String((p as { text?: unknown }).text ?? '') : ''
+        )
         .join('');
     return { kind: 'text', text };
 }

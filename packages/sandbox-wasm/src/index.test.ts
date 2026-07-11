@@ -33,7 +33,9 @@ describe('runJs (real WASM execution)', () => {
         const proc = await runJs('typeof process');
         expect(proc.output).toBe('undefined');
 
-        const fsAccess = await runJs('typeof require === "function" ? require("fs").readFileSync("/etc/passwd") : "no-fs"');
+        const fsAccess = await runJs(
+            'typeof require === "function" ? require("fs").readFileSync("/etc/passwd") : "no-fs"'
+        );
         expect(fsAccess.output).toBe('no-fs');
     });
 

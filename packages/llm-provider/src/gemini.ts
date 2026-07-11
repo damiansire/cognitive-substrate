@@ -13,11 +13,9 @@ function hasGeminiApiKey(): boolean {
 
 function turnToMessage(turn: ChatTurn): PartListUnion {
     if (turn.kind === 'text') return turn.text;
-    return turn.results.map(
-        (r): Part => ({
-            functionResponse: { id: r.callId, name: r.name, response: { output: r.output } }
-        })
-    );
+    return turn.results.map((r): Part => ({
+        functionResponse: { id: r.callId, name: r.name, response: { output: r.output } }
+    }));
 }
 
 class GeminiChat implements ChatLike {

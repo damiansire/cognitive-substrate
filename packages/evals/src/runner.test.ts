@@ -43,15 +43,11 @@ describe('eval suite (simulation)', () => {
     // cases.ts) — on top of the other ~15 cases' real fs/subprocess work, this
     // legitimately exceeds vitest's 5000ms default under any nontrivial system load,
     // independent of whether any individual case is actually failing.
-    it(
-        'passes every case offline',
-        async () => {
-            const report = await runEvals(cases);
-            const failed = report.results.filter((r) => !r.passed);
-            expect(failed, JSON.stringify(failed, null, 2)).toHaveLength(0);
-            expect(report.simulation).toBe(true);
-            expect(report.totalLlmCalls).toBe(0);
-        },
-        20_000
-    );
+    it('passes every case offline', async () => {
+        const report = await runEvals(cases);
+        const failed = report.results.filter((r) => !r.passed);
+        expect(failed, JSON.stringify(failed, null, 2)).toHaveLength(0);
+        expect(report.simulation).toBe(true);
+        expect(report.totalLlmCalls).toBe(0);
+    }, 20_000);
 });

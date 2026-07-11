@@ -107,8 +107,9 @@ class OpenAiChat implements ChatLike {
         this.messages.push(message);
 
         const functionCalls: AgentFunctionCall[] | undefined = message.tool_calls
-            ?.filter((c): c is OpenAI.Chat.Completions.ChatCompletionMessageToolCall & { type: 'function' } =>
-                c.type === 'function'
+            ?.filter(
+                (c): c is OpenAI.Chat.Completions.ChatCompletionMessageToolCall & { type: 'function' } =>
+                    c.type === 'function'
             )
             .map((c) => ({
                 id: c.id,
