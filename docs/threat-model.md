@@ -37,21 +37,43 @@ en git, no solo documentados):
   approval gate deniega/permite correctamente según corresponda.
 - **Egress de browser** (`adversarial-browser-egress`): confirma que la
   allowlist de dominios se respeta.
+- **Agotamiento de recursos por tiempo de ejecución**
+  (`adversarial-resource-exhaustion`): confirma que un comando en loop
+  infinito (`node -e "while(true){}"`) es abortado dentro de un límite de
+  tiempo acotado. Este caso encontró un bug real al escribirlo: el timeout
+  de `sandbox-terminal` (`packages/sandbox-terminal/src/index.ts`) mataba
+  el proceso de shell inmediato pero dejaba huérfano (y corriendo
+  indefinidamente, consumiendo CPU) al proceso real que ese shell lanzaba —
+  particularmente en Windows, donde no hay limpieza de árbol de procesos
+  por defecto. Se arregló: `runCommand` ahora gestiona el kill manualmente
+  (`killProcessTree`) — grupo de proceso detached + `kill(-pid)` en POSIX,
+  snapshot propio de PID/PPID + kill individual de cada descendiente en
+  Windows (más confiable bajo carga que `taskkill /T` solo) — y la promesa
+  de `runCommand` no resuelve hasta que el árbol completo está
+  confirmadamente muerto. **(cso-2, cerrado)**
+- **Locking de escrituras de estado concurrentes entre procesos reales**
+  (`claims.multiprocess.test.ts` en `packages/engine/src`): el mecanismo de
+  "task claiming" (`packages/engine/src/claims.ts`, `fs.writeFileSync` con
+  flag `wx` + TTL) ya tenía cobertura in-process/secuencial
+  (`behavioral-worker-claiming`), pero eso nunca probó la garantía real que
+  importa: que la creación exclusiva (`wx`) es atómica cuando dos procesos
+  del SO, independientes, compiten por el mismo archivo de lock al mismo
+  instante. El nuevo test lanza dos procesos `node` reales (vía
+  `child_process.spawn`, sincronizados a un instante compartido) que
+  compiten por reclamar la misma tarea; confirma que exactamente uno gana y
+  que el archivo de lock queda bien formado (no corrupto por escritura
+  concurrente). El mecanismo `wx` existente resultó sólido: no hizo falta
+  cambiar `claims.ts`, solo probarlo con concurrencia real. **(cso-adn-1,
+  cerrado)**
 
 ## Vectores de ataque NO cubiertos todavía (gap real, no hipotético)
 
-- **Límites de recursos** (CPU, memoria, tiempo de ejecución, tasa de
-  llamadas): no existe ningún caso `adversarial-*` que fuerce agotamiento de
-  recursos. Un agente en loop (o instruido para hacerlo) podría consumir CPU
-  o memoria sin límite hoy. **(cso-2, pendiente)**
-- **Locking de escrituras de estado concurrentes**: existe un mecanismo de
-  "task claiming" (`packages/engine/src/claims.ts`, `fs.writeFileSync` con
-  flag `wx` + TTL) para reclamar tareas, pero **no hay locking genérico de
-  archivo** para el resto de las escrituras de estado, y el test existente
-  (`behavioral-worker-claiming`) corre todo in-process y secuencial — no
-  simula dos procesos reales escribiendo al mismo tiempo. Dos procesos del
-  engine corriendo en paralelo sobre el mismo estado podrían corromperlo.
-  **(cso-adn-1, pendiente)**
+- **Límites de memoria** (a diferencia del tiempo de ejecución, que ya está
+  cubierto arriba): `sandbox-terminal` no impone ningún límite de memoria
+  al proceso que ejecuta — un comando que asigna memoria sin límite (pero
+  sin loopear indefinidamente en CPU, evitando así el timeout) no está
+  contenido hoy. Requeriría un límite a nivel OS (cgroups/Job Object con
+  límite de memoria, o contenedor) — el timeout por sí solo no lo cubre.
 - **Aislamiento real (contenedor/WASM)**: el sandboxing hoy es manual en
   TypeScript (validación de paths, allowlists), no una primitiva de
   aislamiento del sistema operativo (contenedor de un solo uso, runtime WASM
