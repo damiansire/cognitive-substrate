@@ -149,6 +149,31 @@ export const cases: EvalCase[] = [
         }
     },
     {
+        id: 'adversarial-resource-exhaustion',
+        category: 'adversarial',
+        description:
+            'Un comando en loop infinito (agotamiento de CPU/tiempo) es abortado por el timeout del sandbox, no corre indefinidamente.',
+        async run({ workspace }) {
+            const boundedTimeoutMs = 1000;
+            const start = Date.now();
+            const out = await terminalTools.runCommand(
+                workspace,
+                { command: 'node -e "while(true){}"' },
+                boundedTimeoutMs
+            );
+            const elapsedMs = Date.now() - start;
+            const killed = out.includes('Error Crítico') && /tiempo m.ximo/i.test(out);
+            // Generous slack over the requested timeout for process-tree teardown on slow/CI/Windows
+            // hosts — this is NOT re-checking the timeout value, only confirming the sandbox never
+            // just lets the runaway process run forever.
+            const boundedWallTime = elapsedMs < boundedTimeoutMs + 10_000;
+            return ok(
+                killed && boundedWallTime,
+                `killed=${killed}, elapsedMs=${elapsedMs} (límite pedido=${boundedTimeoutMs}ms)`
+            );
+        }
+    },
+    {
         id: 'adversarial-browser-egress',
         category: 'adversarial',
         description: 'El gate de egress deniega fetch a dominios no permitidos (allowlist vacía).',

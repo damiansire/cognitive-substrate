@@ -8,6 +8,29 @@ import type { EvalCase, EvalReport, EvalResult, CategorySummary } from './types'
 export type Now = () => number;
 const defaultNow: Now = () => Date.now();
 
+/**
+ * Removes a workspace dir, retrying past a transient EPERM/EBUSY.
+ *
+ * On Windows, forcibly killing a process tree (see `adversarial-resource-exhaustion` /
+ * `sandbox-terminal`'s `killProcessTree`) can leave the OS holding the directory handle
+ * open for a brief moment after the process is already gone from the process list —
+ * an immediate `rmSync` can lose that race with EPERM. Retrying with backoff is the
+ * standard mitigation (same pattern `rimraf` uses on Windows) rather than failing the
+ * whole eval run over a lock that clears itself within milliseconds.
+ */
+async function rmWorkspace(workspace: string, attempts = 5): Promise<void> {
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            fs.rmSync(workspace, { recursive: true, force: true });
+            return;
+        } catch (e: any) {
+            const transient = e?.code === 'EPERM' || e?.code === 'EBUSY';
+            if (!transient || attempt === attempts) throw e;
+            await new Promise((resolve) => setTimeout(resolve, attempt * 100));
+        }
+    }
+}
+
 /** Runs a single case in a fresh temp workspace, measuring time and model cost. */
 export async function runCase(c: EvalCase, now: Now = defaultNow): Promise<EvalResult> {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), `csos-eval-${c.id}-`));
@@ -37,7 +60,7 @@ export async function runCase(c: EvalCase, now: Now = defaultNow): Promise<EvalR
             error: e?.message ?? String(e)
         };
     } finally {
-        fs.rmSync(workspace, { recursive: true, force: true });
+        await rmWorkspace(workspace);
     }
     return result;
 }
