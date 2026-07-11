@@ -50,7 +50,10 @@ workspaces/*
 dashboard.md
 local_dashboard.md
 apps/presentation/
-evals-report/
+
+# evals-report/ SE VERSIONA (cso-1): es la evidencia real, corrida y committeada, de
+# que el eval harness (npm run eval) pasa — no un claim del README sin respaldo. Se
+# regenera y re-committea con cada corrida relevante del harness.
 
 # Claude Code (no commitear nada relacionado con Claude)
 .claude/
