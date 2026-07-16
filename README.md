@@ -1,6 +1,6 @@
-# Cognitive Substrate OS
+# Cognitive Substrate
 
-[![CI](https://github.com/damiansire/cognitive-substrate-os/actions/workflows/ci.yml/badge.svg)](https://github.com/damiansire/cognitive-substrate-os/actions/workflows/ci.yml)
+[![CI](https://github.com/damiansire/cognitive-substrate/actions/workflows/ci.yml/badge.svg)](https://github.com/damiansire/cognitive-substrate/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A lightweight, local, **filesystem-first agentic task runner** built in TypeScript and
@@ -10,7 +10,7 @@ records evidence to disk**, learns one thing, and shows you the state — all as
 markdown you can read and edit.
 
 It is deliberately *not* a chat bot and deliberately *not* magic: every piece of state
-the OS holds is a file on your disk.
+it holds is a file on your disk.
 
 ## What it does today (implemented)
 
@@ -120,8 +120,8 @@ concrete pending items.
 
 ### 2. Installation
 ```bash
-git clone https://github.com/damiansire/cognitive-substrate-os.git
-cd cognitive-substrate-os
+git clone https://github.com/damiansire/cognitive-substrate.git
+cd cognitive-substrate
 npm install
 npm run build
 ```

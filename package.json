@@ -1,7 +1,7 @@
 {
-  "name": "cognitive-substrate-os",
+  "name": "cognitive-substrate",
   "version": "1.0.0",
-  "description": "Lightweight, local, filesystem-first AI agent OS (AIOS) in TypeScript, powered by Google Gemini.",
+  "description": "Filesystem-first agentic task runner in TypeScript, powered by Google Gemini.",
   "sideEffects": false,
   "files": [
     "dist",
